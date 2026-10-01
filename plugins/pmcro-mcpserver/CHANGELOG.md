@@ -1,5 +1,9 @@
 # Changelog: pmcro-mcpserver
 
+## 0.2.0
+
+- Added `platform-api-mcp`: generator for MCP servers that wrap a third-party HTTP API from a JSON spec; CI job `platform-mcp`.
+
 ## 0.1.0
 
 - Scaffolded with `tools/pmcro.py new-plugin`.

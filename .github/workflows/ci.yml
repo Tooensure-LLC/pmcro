@@ -76,3 +76,30 @@ jobs:
           python tests/smoke_crud_server.py http://127.0.0.1:5098 Users || { cat "$RUNNER_TEMP/crud.log"; exit 1; }
           curl -sf http://127.0.0.1:5098/openapi/v1.json > /dev/null
           curl -sf http://127.0.0.1:5098/scalar > /dev/null
+
+  platform-mcp:
+    # Generates a platform-wrapping MCP server from the example spec, builds it and exercises it against a fake API.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Generate
+        run: python plugins/pmcro-mcpserver/skills/platform-api-mcp/scripts/generate_platform_mcp.py --spec plugins/pmcro-mcpserver/skills/platform-api-mcp/assets/examples/example-api.json --out "$RUNNER_TEMP/pmcp"
+      - name: Build
+        run: dotnet build "$RUNNER_TEMP/pmcp" -c Release
+      - name: Install the Python MCP client
+        run: pip install mcp==1.28.1
+      - name: Run against the fake API (writes disabled, then enabled)
+        run: |
+          python tests/fixtures/fake_platform_api.py 5095 &
+          export EXAMPLE_API_BASE_URL=http://127.0.0.1:5095 EXAMPLE_API_TOKEN=test-token
+          dotnet "$RUNNER_TEMP/pmcp/bin/Release/net10.0/Pmcro.Mcp.ExampleApi.dll" --urls http://127.0.0.1:5097 > "$RUNNER_TEMP/denied.log" 2>&1 &
+          Platform__AllowWrites=true dotnet "$RUNNER_TEMP/pmcp/bin/Release/net10.0/Pmcro.Mcp.ExampleApi.dll" --urls http://127.0.0.1:5096 > "$RUNNER_TEMP/allowed.log" 2>&1 &
+          for p in 5097 5096; do for i in $(seq 1 30); do curl -sf http://127.0.0.1:$p/healthz && break || sleep 1; done; done
+          python tests/smoke_platform_mcp.py http://127.0.0.1:5097/mcp denied || { cat "$RUNNER_TEMP/denied.log"; exit 1; }
+          python tests/smoke_platform_mcp.py http://127.0.0.1:5096/mcp allowed || { cat "$RUNNER_TEMP/allowed.log"; exit 1; }

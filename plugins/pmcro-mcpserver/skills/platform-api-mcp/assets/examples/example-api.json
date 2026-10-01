@@ -1,0 +1,30 @@
+{
+  "name": "Pmcro.Mcp.ExampleApi",
+  "platform": "Example API",
+  "base_url_env": "EXAMPLE_API_BASE_URL",
+  "token_env": "EXAMPLE_API_TOKEN",
+  "operations": [
+    {
+      "name": "GetThing",
+      "method": "GET",
+      "path": "/things/{id}",
+      "description": "Fetch one thing by id.",
+      "params": [{"name": "id", "in": "path"}, {"name": "fields", "in": "query", "optional": true}]
+    },
+    {
+      "name": "ListThings",
+      "method": "GET",
+      "path": "/things",
+      "description": "List things, optionally limited.",
+      "params": [{"name": "limit", "in": "query", "optional": true}]
+    },
+    {
+      "name": "CreateThing",
+      "method": "POST",
+      "path": "/things",
+      "write": true,
+      "description": "Create a thing from a JSON body.",
+      "params": [{"name": "body", "in": "body"}]
+    }
+  ]
+}

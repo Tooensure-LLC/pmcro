@@ -46,3 +46,8 @@ What matters, with the company's own status words:
 Corrections to this repo, from the reading: the Grok candidate dataset's system prompt is not the first-person "I AM" form the Final Spec asks for; the training procedure and eligibility rules are summarized in `training-data-spec.md`; the owner's `create-skill` validator is lenient (Trail 011 found it accepts eight kinds of frontmatter that strict YAML rejects).
 
 Still unread: the second half of Lock Thought, the end of Governed Autonomy, the Plugin Manager tail, the middle of the three Runtime corpus versions, and the rest of the enterprise QA document.
+
+## Macro and micro workflows: two statements that differ
+
+The Production Runtime corpus (PROPOSED) says a macro workflow is company or C-Suite coordination scope and a micro workflow is a bounded Runtime execution unit, and that a micro workflow is not a Trail frame. In chat on 2026-10-01 the owner described it as: the micro workflow runs PMCR-O Trails and the macro workflow runs the agent loop, with the workflow (not the model) as what guarantees a Trail is written, plus the Agent Governance Toolkit. These may be the same idea described from different sides, but they are not the same wording. Neither is recorded as decided: the owner to say which wording is canonical. Until then this repo says only that guarantees live in workflow code and judgment lives in agents.
+

@@ -1190,7 +1190,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
         expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
-                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud"}
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -1398,3 +1398,56 @@ class GenericCrudScaffold(unittest.TestCase):
             self.run_s("--out", d, "--namespace", "Acme", "--entity", "User")
             r = self.run_s("--out", d, "--namespace", "Acme", "--entity", "User")
             self.assertEqual(r.returncode, 1)
+
+
+class PlatformMcpGenerator(unittest.TestCase):
+    """generate_platform_mcp.py: spec validation must-fail cases and output shape (C# compiled only in CI)."""
+    SCRIPT = REPO / "plugins/pmcro-mcpserver/skills/platform-api-mcp/scripts/generate_platform_mcp.py"
+    EXAMPLE = REPO / "plugins/pmcro-mcpserver/skills/platform-api-mcp/assets/examples/example-api.json"
+
+    def run_gen(self, spec, out):
+        p = pathlib.Path(out).parent / "spec.json"
+        p.write_text(json.dumps(spec))
+        return subprocess.run([sys.executable, str(self.SCRIPT), "--spec", str(p), "--out", out], capture_output=True, text=True)
+
+    def example(self):
+        return json.loads(self.EXAMPLE.read_text())
+
+    def test_example_generates_and_encodes_the_safety_rules(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = self.run_gen(self.example(), d + "/out")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            tools = (pathlib.Path(d) / "out/Tools/PlatformTools.cs").read_text()
+            client = (pathlib.Path(d) / "out/Configuration/PlatformClient.cs").read_text()
+            self.assertIn('Name = "CreateThing"', tools)
+            self.assertIn(", true);", tools.split('Name = "CreateThing"')[1])
+            self.assertIn("Platform:AllowWrites", client)
+            self.assertIn("EXAMPLE_API_TOKEN", client)
+            self.assertNotIn("{{", tools + client)
+            self.assertNotIn("test-token", tools + client)
+
+    def test_must_fail_specs(self):
+        def mutate(f):
+            s = self.example(); f(s); return s
+        cases = {
+            "post not marked write": lambda s: s["operations"][2].pop("write"),
+            "get marked write": lambda s: s["operations"][0].update(write=True),
+            "bad method": lambda s: s["operations"][0].update(method="TRACE"),
+            "path traversal": lambda s: s["operations"][0].update(path="/things/../admin"),
+            "query in path": lambda s: s["operations"][1].update(path="/things?x=1"),
+            "path param undeclared": lambda s: s["operations"][0]["params"].pop(0),
+            "keyword param": lambda s: s["operations"][0]["params"][0].update(name="class"),
+            "bad env name": lambda s: s.update(token_env="token"),
+            "duplicate op": lambda s: s["operations"][1].update(name="GetThing"),
+            "body on read": lambda s: s["operations"][1]["params"].append({"name": "body", "in": "body"}),
+        }
+        for label, f in cases.items():
+            with tempfile.TemporaryDirectory() as d:
+                r = self.run_gen(mutate(f), d + "/out")
+                self.assertEqual(r.returncode, 1, label)
+                self.assertIn("refused", r.stderr, label)
+
+    def test_refuses_existing_output(self):
+        with tempfile.TemporaryDirectory() as d:
+            (pathlib.Path(d) / "out").mkdir()
+            self.assertEqual(self.run_gen(self.example(), d + "/out").returncode, 1)

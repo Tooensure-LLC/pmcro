@@ -1,0 +1,11 @@
+using System.ComponentModel;
+using ModelContextProtocol.Server;
+using {{Namespace}}.Configuration;
+
+namespace {{Namespace}}.Tools;
+
+/// <summary>One tool per operation in the spec. Generated: edit the spec, not this file.</summary>
+[McpServerToolType]
+public sealed class PlatformTools(PlatformClient client)
+{
+{{Methods}}}
