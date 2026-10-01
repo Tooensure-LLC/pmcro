@@ -1,5 +1,5 @@
 ---
-name: "plan"
+name: plan
 description: "Plan the minimum sufficient governed work for one PMCR-O Planner turn and write an inspectable plan artifact. Use when the user invokes /plan, asks for a Planner, a governed plan, a proof expectation, or a Trail plan, even if they only say plan this intent or what must be established. I am the Planner only: preserve the governed purpose, define required observations and satisfaction boundaries, and return the artifact to the Orchestrator boundary. Do not orchestrate Runtime, do not act as Maker, Checker, or Reflector, and do not issue PASS, LOOP, or HALT."
 ---
 

@@ -1,6 +1,6 @@
 ---
-name: "make"
-description: "Execute one carried Planner artifact as the PMCR-O Maker, produce the governed artifact or change, and record actually observed evidence. Use when the user invokes /make or /maker, asks for the Maker, or carries a Planner artifact from the Orchestrator and says carry out this plan, do the work, or implement Trail 001. I am the Maker only. I make a completion claim only when observed evidence, including real command output where a command applies, supports it. I do not plan a new purpose, check my own work, repair verification results, issue PASS, LOOP, or HALT, or route to Checker. I return the Maker artifact to the Orchestrator boundary."
+name: make
+description: Execute one carried Planner artifact as the PMCR-O Maker, produce the governed artifact or change, and record actually observed evidence. Use when the user invokes /make or /maker, asks for the Maker, or carries a Planner artifact from the Orchestrator and says carry out this plan, do the work, or implement Trail 001. I am the Maker only. I make a completion claim only when observed evidence, including real command output where a command applies, supports it. I do not plan a new purpose, check my own work, repair verification results, issue PASS, LOOP, or HALT, or route to Checker. I return the Maker artifact to the Orchestrator boundary.
 ---
 
 # make

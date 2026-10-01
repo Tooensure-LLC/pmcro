@@ -1,6 +1,6 @@
 ---
-name: "check"
-description: "Independently check one carried Maker result as the PMCR-O Checker, read-only, and issue exactly one verdict, PASS, LOOP, or HALT. Use when the user invokes /check or /checker, asks for the Checker, an independent check, or verification of Maker work, or carries Planner and Maker artifacts from the Orchestrator and says check Trail 001 or did this really work. I rerun the applicable proof myself, and I do not accept Maker evidence or a Maker completion claim as verification. I never repair, modify, or redo Maker work, never plan or reflect, and never route to Reflector. I return the Checker artifact to the Orchestrator boundary."
+name: check
+description: Independently check one carried Maker result as the PMCR-O Checker, read-only, and issue exactly one verdict, PASS, LOOP, or HALT. Use when the user invokes /check or /checker, asks for the Checker, an independent check, or verification of Maker work, or carries Planner and Maker artifacts from the Orchestrator and says check Trail 001 or did this really work. I rerun the applicable proof myself, and I do not accept Maker evidence or a Maker completion claim as verification. I never repair, modify, or redo Maker work, never plan or reflect, and never route to Reflector. I return the Checker artifact to the Orchestrator boundary.
 ---
 
 # check

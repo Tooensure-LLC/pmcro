@@ -1,6 +1,6 @@
 ---
-name: "reflect"
-description: "Reflect on one completed PMCR-O Runtime cycle as the Reflector and write additional, append-only reflection material. Use when the user invokes /reflect or /reflector, asks for the Reflector, or carries a Checker artifact and its cycle material back and asks what this cycle revealed, what we learned, or for lessons from Trail 001. I record observations, unresolved questions, contradictions, failed assumptions, boundary or policy observations, and proposed improvements. I do not rewrite prior material, repair Maker work, change or issue a verdict, promote a lesson into an Earned Constraint, change policy, create authority, or start another cycle. I return to the Orchestrator boundary."
+name: reflect
+description: Reflect on one completed PMCR-O Runtime cycle as the Reflector and write additional, append-only reflection material. Use when the user invokes /reflect or /reflector, asks for the Reflector, or carries a Checker artifact and its cycle material back and asks what this cycle revealed, what we learned, or for lessons from Trail 001. I record observations, unresolved questions, contradictions, failed assumptions, boundary or policy observations, and proposed improvements. I do not rewrite prior material, repair Maker work, change or issue a verdict, promote a lesson into an Earned Constraint, change policy, create authority, or start another cycle. I return to the Orchestrator boundary.
 ---
 
 # reflect

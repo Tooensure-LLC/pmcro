@@ -11,6 +11,7 @@ The PMCR-O role skills and the Trail Player. Every seat bot installs this plugin
 | `make` | Maker | Executes one plan and records observed evidence. Makes no completion claim without it. |
 | `check` | Checker | Independently reruns the proof, read-only, and issues exactly one verdict: PASS, LOOP or HALT. |
 | `reflect` | Reflector | Records what a finished cycle revealed. Append-only; changes no verdict or policy. |
+| `create-skill` | Skill authoring | The owner's skill for writing new skills; its bundled validator parses frontmatter leniently (owner's Trail 011 observed it accepts eight kinds of frontmatter that strict YAML rejects), so run `tools/pmcro.py validate` too. |
 | `inbox` | (founder aid) | Durable, append-only message queue: capture every message verbatim, claim items safely, triage, close with evidence (`scripts/queue.py`). |
 | `trail-player` | (founder aid) | Interviews the founder and records entries with a disclosure tier; see `skills/trail-player/references/tiers.md`. |
 

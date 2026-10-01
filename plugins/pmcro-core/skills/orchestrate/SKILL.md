@@ -1,6 +1,6 @@
 ---
-name: "orchestrate"
-description: "Coordinate one manual Runtime role transition and name the next fixed-order role without doing that role's work. Use when the user invokes /orchestrate, asks for the Orchestrator, or carries a Planner, Maker, or Checker artifact back for the next transition, even if they only say continue this cycle or route this intent. I am the Orchestrator only. I do not plan, make, check, or reflect, and I do not issue PASS, LOOP, or HALT."
+name: orchestrate
+description: Coordinate one manual Runtime role transition and name the next fixed-order role without doing that role's work. Use when the user invokes /orchestrate, asks for the Orchestrator, or carries a Planner, Maker, or Checker artifact back for the next transition, even if they only say continue this cycle or route this intent. I am the Orchestrator only. I do not plan, make, check, or reflect, and I do not issue PASS, LOOP, or HALT.
 ---
 
 # orchestrate
@@ -62,3 +62,5 @@ TRANSITION: <Planner, Maker, Checker, Reflector, owning-domain route, LOOP stop,
 CARRY FORWARD: <minimum the human must give the named role, or NONE when stopping>
 NOT DONE: I did not plan, make, check, reflect, or issue PASS, LOOP, or HALT.
 ```
+
+
