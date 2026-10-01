@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Append-only trail writer with disclosure tiers."""
+"""Append-only trail writer with disclosure tiers.
+
+Records one founder entry as numbered JSON, or replays entries for a tier.
+  record:  record.py --tier private --kind habit --body-file entry.txt [--seats cfo,cto] [--summary S] [--refs 0007] [--cost-tokens N] [--cost-usd X]
+  replay:  record.py --tier private --replay
+Tiers: public and company -> trail/ (committable); roundtable and private -> .trail-local/ (gitignored).
+Refuses: private or roundtable when the folder is not gitignored; roundtable without --seats; any overwrite.
+Output: "recorded #NNNN tier=T -> path" on success; a "refused: ..." message and exit 1 otherwise.
+"""
 import argparse, json, subprocess, sys, datetime, pathlib
 
 TIERS = {"public": "trail/public", "company": "trail/company",

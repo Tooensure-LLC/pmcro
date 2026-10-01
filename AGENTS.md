@@ -23,6 +23,20 @@ CI runs the same commands and makes no model calls.
 - The role skills `orchestrate`, `plan`, `make`, `check`, `reflect` are byte-identical to the owner's skills drive. Do not edit them here.
 - Marketplace and plugin names must not contain claude, anthropic, grok, copilot, codex or agent-skills.
 
+## Documentation law (enforced; applies to agents and people equally)
+
+Heavy documentation is mandatory, not optional. `python tools/pmcro.py validate` and CI fail when:
+
+- a plugin has no `README.md` with `## Skills`, `## Install`, `## Status` and every skill named;
+- a plugin's `CHANGELOG.md` has no `## <version>` entry for its current `plugin.json` version;
+- a script has fewer than 2 docstring lines, or its skill never mentions it;
+- a file under `docs/` is not linked from `docs/README.md`.
+
+Also required, by this law though not machine-checked: record each decision as a numbered file in
+`docs/decisions/`; state in the docs what was **not** tested or is unverified; change docs in the
+same commit as the code they describe; bump the plugin version for any behavior change. An agent
+that skips documentation has not finished the task.
+
 ## Laws that bind agents working here
 
 Verify first. Log before act. Only the Checker issues PASS, LOOP or HALT. MaxLoops is 3.

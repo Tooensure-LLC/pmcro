@@ -121,6 +121,54 @@ def load_plugin(p, errors):
     return m
 
 
+def docstring(path):
+    import ast
+    try:
+        return ast.get_docstring(ast.parse(path.read_text())) or ""
+    except SyntaxError:
+        return ""
+
+
+def check_docs(errors):
+    """Documentation law: every plugin, script and decision is documented, and docs stay in step."""
+    for p in plugin_dirs():
+        m = json.loads((p / "plugin.json").read_text())
+        rd, cl = p / "README.md", p / "CHANGELOG.md"
+        rel = p.relative_to(ROOT)
+        if not rd.is_file():
+            errors.append(f"{rel}: README.md required (purpose, ## Skills, ## Install, ## Status)")
+        else:
+            text = rd.read_text()
+            for h in ("## Skills", "## Install", "## Status"):
+                if h not in text:
+                    errors.append(f"{rel}/README.md: missing section {h!r}")
+            for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
+                if sk.is_dir() and sk.name not in text:
+                    errors.append(f"{rel}/README.md: skill {sk.name!r} is not documented")
+        if not cl.is_file() or f"## {m.get('version')}" not in cl.read_text():
+            errors.append(f"{rel}/CHANGELOG.md: needs a '## {m.get('version')}' entry for the current version")
+        for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
+            if not sk.is_dir():
+                continue
+            body = "".join(f.read_text(errors="ignore") for f in [sk / "SKILL.md", *sk.glob("references/*.md")] if f.is_file())
+            for s in sorted((sk / "scripts").glob("*.py")) if (sk / "scripts").is_dir() else []:
+                if len([ln for ln in docstring(s).splitlines() if ln.strip()]) < 2:
+                    errors.append(f"{s.relative_to(ROOT)}: module docstring needs at least 2 lines (purpose, usage)")
+                if s.name not in body:
+                    errors.append(f"{s.relative_to(ROOT)}: script is not mentioned in its skill's SKILL.md or references")
+    for s in sorted((ROOT / "tools").glob("*.py")):
+        if len([ln for ln in docstring(s).splitlines() if ln.strip()]) < 2:
+            errors.append(f"{s.relative_to(ROOT)}: module docstring needs at least 2 lines (purpose, usage)")
+    for need in ("README.md", "AGENTS.md", "docs/README.md"):
+        if not (ROOT / need).is_file():
+            errors.append(f"{need}: required")
+    idx = (ROOT / "docs/README.md")
+    if idx.is_file():
+        for f in sorted((ROOT / "docs").rglob("*.md")):
+            if f != idx and f.name not in idx.read_text():
+                errors.append(f"docs/README.md: does not link {f.relative_to(ROOT / 'docs')}")
+
+
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -201,6 +249,7 @@ def cmd_validate():
             if sk.is_dir():
                 check_skill(sk, errors)
     check_upstreams(errors)
+    check_docs(errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
     for skill, n in outside_links():

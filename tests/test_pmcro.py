@@ -104,6 +104,61 @@ class AdaptersAreCurrent(unittest.TestCase):
         self.assertNotIn("$schema", m)
 
 
+class DocsLaw(Sandbox):
+    """Each documentation rule has a must-fail case."""
+
+    def setUp(self):
+        super().setUp()
+        for d in ("docs", "tools"):
+            shutil.copytree(REPO / d, self.tmp / d)
+        for f in ("README.md", "AGENTS.md"):
+            shutil.copy(REPO / f, self.tmp / f)
+
+    def docs_errors(self):
+        errs = []
+        pmcro.check_docs(errs)
+        return errs
+
+    def expect(self, fragment):
+        errs = self.docs_errors()
+        self.assertTrue(any(fragment in e for e in errs), f"{fragment!r} not in {errs}")
+
+    def test_clean_tree_passes(self):
+        self.assertEqual(self.docs_errors(), [])
+
+    def test_missing_plugin_readme(self):
+        (self.tmp / "plugins/pmcro-core/README.md").unlink()
+        self.expect("README.md required")
+
+    def test_readme_missing_section(self):
+        self.edit("plugins/pmcro-core/README.md", lambda t: t.replace("## Status", "## Notes"))
+        self.expect("missing section")
+
+    def test_readme_must_name_every_skill(self):
+        self.edit("plugins/pmcro-core/README.md", lambda t: t.replace("trail-player", "tp"))
+        self.expect("not documented")
+
+    def test_changelog_needs_current_version(self):
+        self.edit("plugins/pmcro-core/plugin.json", lambda t: t.replace("0.1.0", "0.2.0"))
+        self.expect("CHANGELOG.md")
+
+    def test_script_needs_docstring(self):
+        (self.tmp / "plugins/pmcro-core/skills/trail-player/scripts/record.py").write_text("print('x')\n")
+        self.expect("module docstring")
+
+    def test_script_must_be_mentioned_in_its_skill(self):
+        self.edit("plugins/pmcro-core/skills/trail-player/SKILL.md", lambda t: t.replace("record.py", "writer"))
+        self.expect("not mentioned")
+
+    def test_tool_needs_docstring(self):
+        (self.tmp / "tools/extra.py").write_text("x = 1\n")
+        self.expect("tools/extra.py")
+
+    def test_doc_must_be_indexed(self):
+        (self.tmp / "docs/orphan.md").write_text("orphan")
+        self.expect("does not link")
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
