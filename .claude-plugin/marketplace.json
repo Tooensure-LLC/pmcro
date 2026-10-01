@@ -35,6 +35,11 @@
       "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP."
     },
     {
+      "name": "pmcro-social",
+      "source": "./plugins/pmcro-social",
+      "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts."
+    },
+    {
       "name": "dotnet",
       "source": {
         "source": "git-subdir",

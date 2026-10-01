@@ -535,6 +535,81 @@ class FigmaLinter(unittest.TestCase):
         self.assertNotRegex(src, r'print\(.*\b(PASS|LOOP|HALT)\b')
 
 
+REGISTRY = REPO / "plugins/pmcro-social/skills/account-ops/scripts/registry.py"
+
+
+class AccountRegistry(unittest.TestCase):
+    def setUp(self):
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.repo)
+
+    def r(self, *args):
+        return subprocess.run([sys.executable, str(REGISTRY), *args], cwd=self.repo, capture_output=True, text=True)
+
+    def add(self, handle="@a", cadence="7", purpose="news"):
+        return self.r("add", "--platform", "x", "--handle", handle, "--purpose", purpose, "--cadence-days", cadence)
+
+    def test_add_list_and_duplicate(self):
+        self.assertIn("added A01", self.add().stdout)
+        self.assertIn("duplicate", self.add().stdout)
+        self.assertIn("1 accounts", self.r("list").stdout)
+
+    def test_credential_text_refused(self):
+        r = self.r("add", "--platform", "x", "--handle", "@a", "--purpose", "password: hunter2")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("credentials", r.stderr)
+
+    def test_credential_column_refused_on_import(self):
+        f = self.repo / "a.csv"
+        f.write_text("platform,handle,password\nx,@a,hunter2\n")
+        r = self.r("import", str(f))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("credentials", r.stderr)
+
+    def test_import_loads_many(self):
+        f = self.repo / "a.csv"
+        f.write_text("platform,handle,purpose,cadence_days,owner\nx,@a,news,7,founder\nyoutube,@b,videos,14,company\nig,@c,,,\n")
+        self.r("import", str(f))
+        self.assertIn("3 accounts", self.r("list").stdout)
+
+    def test_review_flags_missing_purpose_cadence_activity(self):
+        self.r("add", "--platform", "ig", "--handle", "@c")
+        out = self.r("review").stdout
+        for word in ("no purpose", "no cadence", "no activity"):
+            self.assertIn(word, out)
+        self.assertIn("suggestions for a human, not actions", out)
+
+    def test_brief_orders_most_overdue_first_and_clears_after_posting(self):
+        self.add("@a", "7")
+        self.add("@b", "7")
+        self.r("posted", "A01", "--date", "2026-09-01")
+        self.r("posted", "A02", "--date", "2026-09-20")
+        out = self.r("brief", "--today", "2026-10-01").stdout
+        self.assertLess(out.index("A01"), out.index("A02"))
+        self.r("posted", "A01", "--date", "2026-10-01")
+        self.r("posted", "A02", "--date", "2026-10-01")
+        self.assertIn("0 need you", self.r("brief", "--today", "2026-10-01").stdout)
+
+    def test_retire_hides_from_list_but_log_keeps_everything(self):
+        self.add()
+        self.r("retire", "A01", "--reason", "unused")
+        self.assertIn("0 accounts", self.r("list").stdout)
+        self.assertIn("1 accounts", self.r("list", "--all").stdout)
+        log = (self.repo / ".trail-local/private/accounts/accounts.jsonl").read_text().splitlines()
+        self.assertEqual([json.loads(x)["event"] for x in log], ["added", "retired"])
+
+    def test_refused_when_not_gitignored(self):
+        (self.repo / ".gitignore").write_text("")
+        self.assertIn("not gitignored", self.add().stderr)
+
+    def test_unknown_account_refused(self):
+        self.assertNotEqual(self.r("posted", "A99").returncode, 0)
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -598,7 +673,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]

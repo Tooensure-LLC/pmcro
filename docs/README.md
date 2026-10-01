@@ -32,5 +32,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0015](decisions/0015-figma-factory-composes-with-figma-mcp.md) | The Figma factory composes with Figma's MCP, it does not proxy it |
 | [0016](decisions/0016-self-reference-by-default-serve-everything-over-mcp.md) | Self-reference by default: every capability is also served over MCP |
 | [0017](decisions/0017-ghostwriter-phases-and-third-party-voices.md) | Ghostwriter phases; third-party voices only under contract |
+| [0018](decisions/0018-account-relief-without-credentials.md) | Relieve account overload without handing agents credentials |
 
 New decision: copy the last record, increment the number, and add a row above.
