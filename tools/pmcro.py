@@ -85,6 +85,19 @@ def check_skill(d, errors):
                         errors.append(f"{p.relative_to(ROOT)}: absolute path")
 
 
+OUTSIDE = re.compile(r"`(\.\./[^`\s]+)`")
+
+
+def outside_links():
+    found = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            n = len(OUTSIDE.findall(f.read_text()))
+            if n:
+                found.append((f.parent.relative_to(ROOT), n))
+    return found
+
+
 def load_plugin(p, errors):
     where = (p / "plugin.json").relative_to(ROOT)
     try:
@@ -156,6 +169,8 @@ def cmd_validate():
                 check_skill(sk, errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
+    for skill, n in outside_links():
+        print(f"WARN {skill}: {n} relative path(s) outside the skill; they will not resolve once the plugin is installed alone")
     for e in errors:
         print("ERROR", e)
     if errors:

@@ -114,7 +114,8 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills"}
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models",
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -156,6 +157,77 @@ class TrailPlayerGuards(unittest.TestCase):
         self.run_rec("--tier", "private", "--kind", "note")
         names = sorted(p.name for p in (self.repo / ".trail-local/private").glob("*.json"))
         self.assertEqual(names, ["0001-note.json", "0002-note.json"])
+
+
+def _load_mcp():
+    p = REPO / "plugins/pmcro-dotnet/skills/mcp-local-models/scripts/load_mcp.py"
+    s = importlib.util.spec_from_file_location("load_mcp", p)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m
+
+
+ECHO = {"servers": {"echo": {
+    "transport": "stdio", "command": sys.executable, "args": [str(REPO / "tests/fixtures/echo_mcp.py")],
+    "roles": {"checker": {"allowed_tools": ["read_note"]},
+              "maker": {"allowed_tools": ["read_note", "write_note"], "approval": "always_require"}}}}}
+
+
+class McpConfigRules(unittest.TestCase):
+    def errs(self, **server):
+        cfg = {"servers": {"s": {"transport": "http", "url": "https://x.example/mcp",
+                                 "roles": {"maker": {"allowed_tools": ["a"]}}, **server}}}
+        return _load_mcp().check(cfg)
+
+    def test_clean_config_passes(self):
+        self.assertEqual(self.errs(), [])
+        self.assertEqual(_load_mcp().check(ECHO), [])
+
+    def test_inline_token_refused(self):
+        self.assertTrue(any("credential" in e for e in self.errs(note="ghp_" + "a" * 36)))
+
+    def test_plain_http_refused_but_loopback_ok(self):
+        self.assertTrue(any("https" in e for e in self.errs(url="http://remote.example/mcp")))
+        self.assertEqual(self.errs(url="http://localhost:8080/mcp"), [])
+
+    def test_missing_allow_list_refused(self):
+        self.assertTrue(any("allowed_tools" in e for e in self.errs(roles={"maker": {}})))
+
+    def test_env_name_must_be_a_name_not_a_value(self):
+        self.assertTrue(any("NAME" in e for e in self.errs(headers_from_env={"Authorization": "secret value"})))
+
+    def test_shipped_example_passes(self):
+        cfg = json.loads((REPO / "plugins/pmcro-dotnet/skills/mcp-local-models/assets/mcp-servers.example.json").read_text())
+        self.assertEqual(_load_mcp().check(cfg), [])
+
+
+class McpThroughMaf(unittest.TestCase):
+    """Real MCP calls over stdio: the Checker role must not even see the write tool."""
+
+    def names(self, role):
+        try:
+            import agent_framework  # noqa: F401
+        except ImportError:
+            self.skipTest("agent-framework not installed")
+
+        async def go():
+            out = []
+            for tool in _load_mcp().build_tools(ECHO, role):
+                async with tool:
+                    out += [(f.name, getattr(f, "approval_mode", None)) for f in tool.functions]
+            return out
+        return asyncio.run(go())
+
+    def test_checker_sees_only_read_tool(self):
+        self.assertEqual([n for n, _ in self.names("checker")], ["read_note"])
+
+    def test_maker_sees_both_and_needs_approval(self):
+        got = dict(self.names("maker"))
+        self.assertEqual(set(got), {"read_note", "write_note"})
+        self.assertTrue(all(v == "always_require" for v in got.values()))
+
+    def test_unlisted_role_gets_nothing(self):
+        self.assertEqual(self.names("reflector"), [])
 
 
 if __name__ == "__main__":

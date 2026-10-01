@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-csuite",
+  "version": "0.1.0",
+  "description": "PMCR-O C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff), imported from the PMCR-O-Marketplace colony repo.",
+  "skills": [
+    "./skills/"
+  ]
+}

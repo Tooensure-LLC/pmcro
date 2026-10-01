@@ -1,0 +1,22 @@
+{
+  "servers": {
+    "github": {
+      "transport": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers_from_env": {"Authorization": "GITHUB_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": []},
+        "maker": {"allowed_tools": [], "approval": "always_require"}
+      },
+      "note": "Fill allowed_tools after listing the server's tools. Empty means no tools."
+    },
+    "binlog": {
+      "transport": "stdio",
+      "command": "dotnet",
+      "args": ["dnx", "Microsoft.AITools.BinlogMcp", "--yes", "--prerelease"],
+      "roles": {
+        "checker": {"allowed_tools": [], "approval": "always_require"}
+      }
+    }
+  }
+}

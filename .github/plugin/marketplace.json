@@ -10,6 +10,11 @@
       "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers."
     },
     {
+      "name": "pmcro-csuite",
+      "source": "./plugins/pmcro-csuite",
+      "description": "PMCR-O C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff), imported from the PMCR-O-Marketplace colony repo."
+    },
+    {
       "name": "pmcro-dotnet",
       "source": "./plugins/pmcro-dotnet",
       "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure."
