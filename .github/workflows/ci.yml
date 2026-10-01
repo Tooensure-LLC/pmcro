@@ -45,3 +45,11 @@ jobs:
         run: python plugins/pmcro-mcpserver/skills/mcp-server-factory/scripts/generate_dotnet_server.py --name Pmcro.Mcp.Skills --out "$RUNNER_TEMP/server"
       - name: Build it
         run: dotnet build "$RUNNER_TEMP/server" -c Release
+      - name: Install the Python MCP client and MAF
+        run: pip install pyyaml==6.0.2 agent-framework==1.19.0 mcp==1.28.1
+      - name: Start the server and smoke-test it with a real MCP client
+        run: |
+          export Skills__Root="$GITHUB_WORKSPACE/plugins"
+          dotnet "$RUNNER_TEMP/server/bin/Release/net10.0/Pmcro.Mcp.Skills.dll" --urls http://127.0.0.1:5099 > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5099/healthz && break || sleep 1; done
+          python tests/smoke_dotnet_server.py http://127.0.0.1:5099/mcp 20 || { echo "--- server log ---"; cat "$RUNNER_TEMP/server.log"; exit 1; }

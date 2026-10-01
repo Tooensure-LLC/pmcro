@@ -1064,8 +1064,10 @@ class DotnetServerGenerator(unittest.TestCase):
         self.assertIn("<TargetFramework>net10.0</TargetFramework>", proj)
         self.assertIn("namespace Pmcro.Mcp.Skills", (out / "Tools/SkillTools.cs").read_text())
 
-    def test_readme_says_not_compiled(self):
-        self.assertIn("Not compiled", (self.gen() / "README.md").read_text())
+    def test_readme_says_what_is_and_is_not_verified(self):
+        text = (self.gen() / "README.md").read_text()
+        self.assertIn("builds this exact output in CI", text)
+        self.assertIn("Run it and test it", text)
 
     def test_bad_name_tfm_version_and_existing_dir_refused(self):
         for kw in ({"name": "bad name"}, {"name": "lower.case"}, {"tfm": "latest"}, {"mcp_version": "x"}):

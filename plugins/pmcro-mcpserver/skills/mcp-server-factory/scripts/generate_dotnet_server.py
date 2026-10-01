@@ -7,8 +7,9 @@ Tools/SkillTools.cs, Resources/SkillResources.cs, Prompts/SkillPrompts.cs, appse
 Layout and API usage mirror the owner's PMCR-O-Marketplace MCP servers (Configuration, Tools, Resources, Prompts,
 stateless HTTP, MapMcp("/mcp"), ModelContextProtocol 2.1.0). It adds a symbolic-link guard and refuses to serve scripts.
 Refuses: names that are not dotted PascalCase identifiers, an existing output folder, an unknown target framework.
-Output: "generated NAME -> DIR (not compiled)"; "refused: ..." and exit 1 otherwise.
-This tool has no .NET SDK to build with: the generated project is UNVERIFIED until you run dotnet build.
+Output: "generated NAME -> DIR"; "refused: ..." and exit 1 otherwise.
+This tool does not build the project. This repository's CI compiles the default output (net10.0, ModelContextProtocol 2.1.0);
+any other version or target is unverified until you run dotnet build.
 """
 import argparse, pathlib, re, sys
 
@@ -37,7 +38,7 @@ def generate(name, out, tfm="net10.0", mcp_version="2.1.0"):
         dest = out / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(text)
-    print(f"generated {name} -> {out} (not compiled)")
+    print(f"generated {name} -> {out}")
 
 
 if __name__ == "__main__":

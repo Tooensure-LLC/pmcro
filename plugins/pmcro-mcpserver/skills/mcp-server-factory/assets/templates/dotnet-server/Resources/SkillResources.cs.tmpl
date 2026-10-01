@@ -8,8 +8,8 @@ namespace {{Namespace}}.Resources;
 /// <summary>
 /// Skills as MCP resources: skill://index.json lists them, skill://NAME/SKILL.md returns a body, and
 /// skill://NAME/references/FILE returns supporting text on demand. This is the convention MAF's
-/// MCPSkillsSource reads. UNVERIFIED in .NET: the templated UriTemplate forms below follow the SDK's documented
-/// pattern but were not compiled or run where this was generated.
+/// MCPSkillsSource reads. The templated UriTemplate forms below follow the SDK's documented
+/// pattern. This repository's CI compiles them and runs a smoke test against the running server (tests/smoke_dotnet_server.py).
 /// </summary>
 [McpServerResourceType]
 public sealed class SkillResources(SkillsConfig config)
