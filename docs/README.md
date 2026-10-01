@@ -8,6 +8,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [imports.md](imports.md) | What was imported from older repos, what changed, defects found |
 | [offline-kit.md](offline-kit.md) | Packing the repo for an offline machine (tested) and the unattended runner design (not built) |
 | [dotagents.md](dotagents.md) | The dotagents convention: what was run and verified, consumer config, what is not verified |
+| [product/idea-backlog.md](product/idea-backlog.md) | Every direction the owner has given, with status and next step |
 | [product/foundations.md](product/foundations.md) | The three ideas PMCR-O rests on (strange loops, I and Thou, self-replication) and what each asks of the design |
 | [product/everything-as-agent.md](product/everything-as-agent.md) | EverythingAsAgent: capture to draft skill, the pipeline, and the conditions for any steps recorder |
 | [product/ghostwriter.md](product/ghostwriter.md) | Ghostwriter: phases from scripts to songs to voice, and the conditions for third-party voices |
