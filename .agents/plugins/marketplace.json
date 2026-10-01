@@ -5,6 +5,11 @@
   },
   "plugins": [
     {
+      "name": "pmcro-content",
+      "source": "./plugins/pmcro-content",
+      "description": "PMCR-O content creation: scripts in the founder's own voice with sourced claims, and guardrails for synthetic voice and image."
+    },
+    {
       "name": "pmcro-core",
       "source": "./plugins/pmcro-core",
       "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers."

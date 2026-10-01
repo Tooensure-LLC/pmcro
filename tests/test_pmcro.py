@@ -159,6 +159,65 @@ class DocsLaw(Sandbox):
         self.expect("does not link")
 
 
+def _check_script():
+    p = REPO / "plugins/pmcro-content/skills/content-script/scripts/check_script.py"
+    s = importlib.util.spec_from_file_location("check_script", p)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m.check
+
+
+GOOD = """---
+title: T
+duration_min: 1
+synthetic_voice: false
+synthetic_image: false
+---
+## Script
+""" + " ".join(["word"] * 150) + """
+## Claims
+| Claim | Source |
+| --- | --- |
+| Water is wet | opinion |
+## Disclosure
+"""
+
+
+class ContentScriptChecker(unittest.TestCase):
+    def errs(self, text):
+        return _check_script()(text)[0]
+
+    def test_good_script_has_no_errors(self):
+        self.assertEqual(self.errs(GOOD), [])
+
+    def test_missing_front_matter(self):
+        self.assertTrue(any("front matter" in e for e in self.errs("## Script\nhi")))
+
+    def test_wrong_length(self):
+        self.assertTrue(any("words" in e for e in self.errs(GOOD.replace("duration_min: 1", "duration_min: 5"))))
+
+    def test_claim_without_source(self):
+        self.assertTrue(any("no source" in e for e in self.errs(GOOD.replace("opinion", ""))))
+
+    def test_no_claims_at_all(self):
+        self.assertTrue(any("Claims" in e for e in self.errs(GOOD.replace("| Water is wet | opinion |\n", ""))))
+
+    def test_synthetic_voice_needs_disclosure(self):
+        bad = GOOD.replace("synthetic_voice: false", "synthetic_voice: true")
+        self.assertTrue(any("Disclosure" in e for e in self.errs(bad)))
+        ok = bad + "This video uses a synthetic voice.\n"
+        self.assertEqual(self.errs(ok), [])
+
+    def test_private_tier_marker_refused(self):
+        self.assertTrue(any("private" in e for e in self.errs(GOOD + "\ntier: private\n")))
+        self.assertTrue(any("private" in e for e in self.errs(GOOD + "\nsee .trail-local/private/0001\n")))
+
+    def test_never_prints_a_checker_verdict(self):
+        src = (REPO / "plugins/pmcro-content/skills/content-script/scripts/check_script.py").read_text()
+        body = src.split('"""', 2)[2]
+        self.assertNotRegex(body, r'print\(.*\b(PASS|LOOP|HALT)\b')
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -222,7 +281,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
