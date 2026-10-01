@@ -31,6 +31,8 @@ The owner's reading (2026-10-01): dotnet/skills mostly ships a single SKILL.md a
 
 A count taken the same day on a shallow clone of dotnet/skills (commit 973cffb): of 105 skills, 66 have none of the three optional folders, 33 have only `references/`, 3 have references and scripts, 2 only scripts, 1 only assets, and none has all three. So the owner's description is borne out for that repo. Our own 29 skills are not uniformly full either: 9 have all three folders, 7 have references and scripts, 8 only references, 5 none (the role skills and a few small ones).
 
+The owner's own forks of dotnet/skills (read 2026-10-01) show the same counts as upstream at their fork point, so the PMCR-O-style conversion the owner described is not in those three public forks. In a private PMCR-O repo of the owner's, 15 of 16 skills have both `references/` and `scripts/` and none has `assets/` (aggregate counts only).
+
 This is a hypothesis, not a result: the dashboard cannot tell us that structure is why many skills show no clear result, and a skill with a rich structure could still fail on activation. It is exactly what a harness could test: the same task with a prose-only skill and a fully templated one, on the same small model.
 
 ## Reuse before build
