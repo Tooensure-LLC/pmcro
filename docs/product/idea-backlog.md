@@ -34,6 +34,7 @@ Status: maintained by hand from the 2026-10-01 session. Summaries only: no perso
 | 27 | Learn Colab; cognitive agents | DOCS (notes from one search) | `product/colab-and-cognitive-agents.md` | notebook template and data-eligibility check NOT BUILT |
 | 28 | Shared memory (the founder's knowledge) | BUILT | `pmcro-memory`, ADR 0021 | MCP exposure with a server-fixed viewer |
 | 29 | Generate the owner's MCP servers; the owner wires the connections | BUILT (Python server tested with MAF); the .NET server compiled in CI on 2026-10-01; a runtime smoke test was added to CI (result pending) | `pmcro-mcpserver`, ADR 0022 | owner connects clients; read the CI smoke-test result |
+| 30 | The company learns what it does not yet know how to learn: the owner sits, states intent, and the agents work out what they must study and teach it back (stated 2026-10-01; the owner could not recall the exact wording; closest terms: learning how to learn, metacognition, scaffolding, "you don't know what you don't know") | Partly covered: Reflector output and shared memory (candidates, founder accepts), Colab/cognitive-agent notes, sft-dataset-check. Missing: a skill that turns a knowledge gap into a study plan with cited sources and a check question | Proposed: `learn-gap` skill (gap statement, sources, plan, quiz; every claim cited or marked unverified); learnings enter memory as candidates only |
 
 ## Decisions waiting on the owner
 
