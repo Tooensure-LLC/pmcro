@@ -8,6 +8,10 @@ Content creation for the PMCR-O company: scripts in the founder's own voice, wit
 | --- | --- |
 | `content-script` | Write a video, podcast or short-form script from a template, fill a Claims table, add a disclosure line when synthetic media is used, and check structure with `scripts/check_script.py`. |
 
+## Ghostwriter
+
+This plugin is phase 1 of the Ghostwriter product line (`docs/product/ghostwriter.md`, ADR 0017): scripts now, lyrics later, voice only under signed licences.
+
 ## Pipeline (proposed, ADR 0010)
 
 Script (this plugin) -> voice (founder's own, local) -> recording and editing in existing tools (OBS Studio, ffmpeg or an editor of your choice) -> founder approves and publishes. Only the first step is built. We do not build editing software.

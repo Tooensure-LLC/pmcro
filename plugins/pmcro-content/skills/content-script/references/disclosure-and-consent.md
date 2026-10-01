@@ -5,7 +5,7 @@ Status: rules set by the company (ADR 0008). Not legal advice; laws on synthetic
 ## Whose voice or face
 
 - Only the founder's own, and only after they write a consent record: whose voice, that it is their own, what it may be used for, the date. Store the record in the `private` trail tier.
-- Another person's voice or likeness is out of scope for this company's tools. Do not build it, do not test it.
+- Another person's voice or likeness is out of scope for this company's tools today. Do not build it, do not test it. A later Ghostwriter phase may allow it only under the written-licence conditions in ADR 0017; none of that exists yet.
 
 ## Where training happens
 

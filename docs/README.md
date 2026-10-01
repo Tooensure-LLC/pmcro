@@ -8,6 +8,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [imports.md](imports.md) | What was imported from older repos, what changed, defects found |
 | [offline-kit.md](offline-kit.md) | Packing the repo for an offline machine (tested) and the unattended runner design (not built) |
 | [dotagents.md](dotagents.md) | The dotagents convention: what was run and verified, consumer config, what is not verified |
+| [product/ghostwriter.md](product/ghostwriter.md) | Ghostwriter: phases from scripts to songs to voice, and the conditions for third-party voices |
 | [product/trail.md](product/trail.md) | Trail as a product: frame fields, rules, open questions |
 
 ## Decision records
@@ -30,5 +31,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0014](decisions/0014-cloudflare-mcp-read-first-allowlists.md) | Cloudflare MCP: read first, per-role allow-lists |
 | [0015](decisions/0015-figma-factory-composes-with-figma-mcp.md) | The Figma factory composes with Figma's MCP, it does not proxy it |
 | [0016](decisions/0016-self-reference-by-default-serve-everything-over-mcp.md) | Self-reference by default: every capability is also served over MCP |
+| [0017](decisions/0017-ghostwriter-phases-and-third-party-voices.md) | Ghostwriter phases; third-party voices only under contract |
 
 New decision: copy the last record, increment the number, and add a row above.
