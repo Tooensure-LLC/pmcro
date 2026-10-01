@@ -26,5 +26,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0010](decisions/0010-content-pipeline-drives-existing-tools.md) | Content pipeline drives existing tools; the founder approves |
 | [0011](decisions/0011-cloudflare-sites-build-check-never-deploy.md) | Cloudflare site work builds and checks; humans deploy |
 | [0012](decisions/0012-file-based-message-queue.md) | A file-based message queue for the founder's messages |
+| [0013](decisions/0013-simulated-trails-are-not-evidence.md) | Simulated trails are not evidence |
 
 New decision: copy the last record, increment the number, and add a row above.

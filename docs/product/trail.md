@@ -35,3 +35,26 @@ only the tiers it is cleared for, and a cost dashboard. The C-Suite generator is
 ## OPEN
 
 Trail schema details (AGT events, OpenTelemetry GenAI spans or custom), storage (Postgres ledger or files), pricing, what "value" means per product, and where `.trail-local/` is backed up. Local-only entries are lost with this temporary container; back them up on your own machine.
+
+## Seed contract and queue item (reconstructed from a session, 2026-10-01)
+
+Source: an exported Google AI Studio session (Gemini) in which PMCR-O was simulated. The wording of the contract below is quoted from that session's replies, which in turn quote `company.json` (the private company repo, not seen here). Treat this as a reconstruction to confirm, not the canonical text.
+
+- `/pmcro:seed` is intake by the Chief of Staff: "Turn Shawn's messy words into a queue item: raw_intent verbatim, true_intent in one or two plain sentences, done_means with proofs that can fail, owners and pace. If the meaning is unclear, ask instead of guessing."
+- When the meaning is unclear the seed answers `CLARIFICATION REQUIRED` with options and queues nothing. (This is the confirmation step; the C# `PmcroLoop` in ProjectName does not have it.)
+- A queue item (JSON, `queue/NNNN-name.json`) carries: `id`, `name`, `status` (`queued`, then `taken` when a loop opens), `created_at`, `owners` (primary seat plus consulting boundaries), `raw_intent`, `true_intent`, `done_means[]` (each with `description`, `proof_that_can_fail`, `must_fail_check`), and `governance_and_constraints` (spend ceiling, human approvals required, laws bound).
+- `/pmcro:loop NNNN` takes the item and opens a trail; `/pmcro:seal`, `/pmcro:replay` and an `@auditor /sample` follow. The human is "the board".
+
+`pmcro-core`'s `inbox` queue is the raw-message layer under this. The structured queue item is not built here yet (OPEN).
+
+## Provenance: simulated trails are not evidence (ADR 0013)
+
+Every frame should record how it was produced:
+
+| Field | Meaning |
+| --- | --- |
+| `executed` | true only if a real tool or command ran and its real output is in the frame |
+| `executor` | the model or person that did the work |
+| `checker_independent` | true only if the Checker was a different agent with fresh context |
+
+Training eligibility requires `executed: true` and `checker_independent: true` on the cycle; everything else is excluded or tagged as simulated.

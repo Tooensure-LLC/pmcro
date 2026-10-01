@@ -4,6 +4,8 @@
   python tools/pmcro.py validate     check plugins, skills and adapters (CI gate)
   python tools/pmcro.py gen          regenerate vendor adapters from plugins/*/plugin.json
   python tools/pmcro.py gen --check  fail if generated files differ (never writes)
+  python tools/pmcro.py new-plugin NAME --description D [--skill S --skill-description SD]
+                                     scaffold a plugin that already satisfies every rule below
 
 Source of truth: plugins/<name>/plugin.json and plugins/<name>/skills/*/SKILL.md.
 Everything under .claude-plugin/, .cursor-plugin/, .codex-plugin/, .github/plugin/ and
@@ -238,6 +240,76 @@ def cmd_gen(check):
     return 0
 
 
+def cmd_new_plugin(name, description, skill, skill_description):
+    """Scaffold plugins/<name>/ with manifest, README, CHANGELOG and one skill, then regenerate adapters."""
+    if not NAME_RE.match(name) or RESERVED.search(name):
+        print(f"refused: {name!r} must be kebab-case and not contain a reserved word")
+        return 2
+    dest = PLUGINS / name
+    if dest.exists():
+        print(f"refused: {dest.relative_to(ROOT)} already exists")
+        return 2
+    if not NAME_RE.match(skill) or not (1 <= len(skill_description) <= 1024):
+        print("refused: skill must be kebab-case and its description 1-1024 characters")
+        return 2
+    sk = dest / "skills" / skill
+    for sub in ("references", "scripts", "assets"):
+        (sk / sub).mkdir(parents=True)
+        (sk / sub / ".gitkeep").write_text("")
+    (dest / "plugin.json").write_text(json.dumps({"$schema": SCHEMA, "name": name, "version": "0.1.0",
+                                                   "description": description, "skills": ["./skills/"]}, indent=2) + "\n")
+    (dest / "README.md").write_text(f"""# {name}
+
+{description}
+
+## Skills
+
+| Skill | Use it to |
+| --- | --- |
+| `{skill}` | {skill_description[:120]} |
+
+## Install
+
+```
+/plugin install {name}@{MARKETPLACE}
+```
+
+## Status
+
+CANDIDATE. Scaffolded; nothing here is tested yet. Replace this line with what was and was NOT verified.
+""")
+    (dest / "CHANGELOG.md").write_text(f"# Changelog: {name}\n\n## 0.1.0\n\n- Scaffolded with `tools/pmcro.py new-plugin`.\n")
+    (sk / "SKILL.md").write_text(f"""---
+name: {skill}
+description: {json.dumps(skill_description)}
+license: MIT
+---
+
+# {skill}
+
+TODO: explain why this skill exists in two sentences.
+
+## Do this
+
+1. TODO: the common path, as numbered steps. Keep this file short; move detail to `references/`.
+
+## Never
+
+- TODO: what must never happen, and why.
+
+## Output contract
+
+TODO: the exact output to return and how it is verified.
+""")
+    for d in ("references", "scripts", "assets"):
+        (sk / d / ".gitkeep").unlink()
+        if not any((sk / d).iterdir()):
+            (sk / d).rmdir()
+    cmd_gen(check=False)
+    print(f"created {dest.relative_to(ROOT)}; fill the TODOs, then run: python tools/pmcro.py validate")
+    return 0
+
+
 def cmd_validate():
     errors = []
     names = set()
@@ -268,6 +340,14 @@ if __name__ == "__main__":
     a = sys.argv[1:]
     if a[:1] == ["validate"]:
         sys.exit(cmd_validate())
+    if a[:1] == ["new-plugin"]:
+        import argparse
+        ap = argparse.ArgumentParser(prog="pmcro.py new-plugin")
+        ap.add_argument("name"); ap.add_argument("--description", required=True)
+        ap.add_argument("--skill"); ap.add_argument("--skill-description")
+        n = ap.parse_args(a[1:])
+        skill = n.skill or n.name.removeprefix("pmcro-")
+        sys.exit(cmd_new_plugin(n.name, n.description, skill, n.skill_description or n.description))
     if a[:1] == ["gen"]:
         sys.exit(cmd_gen("--check" in a))
     sys.exit(__doc__)

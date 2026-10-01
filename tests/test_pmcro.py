@@ -354,6 +354,31 @@ class InboxQueue(unittest.TestCase):
         self.assertTrue((self.repo / "trail/public/inbox/0001.json").is_file())
 
 
+class NewPluginScaffold(DocsLaw):
+    def run_new(self, name="pmcro-demo", skill=None):
+        return pmcro.cmd_new_plugin(name, "Demo plugin.", skill or "demo", "Use when demoing the scaffold.")
+
+    def test_scaffold_creates_a_plugin_that_passes_every_rule(self):
+        self.assertEqual(self.run_new(), 0)
+        self.assertEqual(self.errors(), [])
+        self.assertEqual(self.docs_errors(), [])
+        self.assertTrue((self.tmp / "plugins/pmcro-demo/.claude-plugin/plugin.json").is_file())
+
+    def test_scaffold_refuses_bad_name_and_reserved_word(self):
+        self.assertEqual(self.run_new("Bad_Name"), 2)
+        self.assertEqual(self.run_new("claude-demo"), 2)
+
+    def test_scaffold_refuses_existing_plugin(self):
+        self.assertEqual(self.run_new("pmcro-core"), 2)
+
+    def test_scaffold_refuses_overlong_skill_description(self):
+        self.assertEqual(pmcro.cmd_new_plugin("pmcro-demo", "d", "demo", "x" * 1100), 2)
+
+    def test_scaffolded_skill_still_carries_visible_todos(self):
+        self.run_new()
+        self.assertIn("TODO", (self.tmp / "plugins/pmcro-demo/skills/demo/SKILL.md").read_text())
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()

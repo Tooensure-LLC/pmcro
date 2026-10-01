@@ -4,6 +4,10 @@ PMCR-O plugins live under `plugins/<name>/`. `plugin.json` and `skills/*/SKILL.m
 of truth; everything else (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`,
 `.github/plugin/`, `.agents/plugins/`) is generated. Never hand-edit generated files.
 
+## New plugins
+
+Start with `python tools/pmcro.py new-plugin pmcro-NAME --description "..."`; it creates a plugin that already satisfies every rule. Fill every `TODO` before you commit.
+
 ## Before you push
 
 ```

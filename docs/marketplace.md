@@ -9,6 +9,10 @@ Status: CANDIDATE. Built 2026-10-01; no independent Checker has run.
 - **Same shape as** [dotnet/skills](https://github.com/dotnet/skills): one folder per plugin, identical per-host manifests, marketplace file per host.
 - **Marketplace name** `pmcro-plugins`. The validator rejects names containing claude, anthropic, grok, copilot, codex or agent-skills.
 
+## Adding a plugin
+
+`python tools/pmcro.py new-plugin pmcro-NAME --description "..." --skill SKILL --skill-description "..."` scaffolds `plugins/pmcro-NAME/` with `plugin.json`, `README.md`, `CHANGELOG.md` and one skill in the strict layout, then regenerates the adapters. The skill body is full of `TODO` markers on purpose: fill them, update the README Status with what was and was not verified, then run `validate`. The idea came from the simulated session in ADR 0013 (a `new-pmcro-plugin` scaffolder); this version is real and tested.
+
 ## Reusing dotnet/skills (pinned upstream)
 
 `upstream.json` lists plugins we reuse from [dotnet/skills](https://github.com/dotnet/skills) (MIT) instead of copying them: MAUI, AI, MSBuild (with its binlog MCP server), test, ASP.NET Core, Blazor, data, NuGet, upgrade, diagnostics, template engine and .NET 11. `gen` writes each as a `git-subdir` entry pinned to a full 40-character commit (`973cffb`, 2026-10-01), so installs never move until we change the pin.
