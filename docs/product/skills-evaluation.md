@@ -1,6 +1,6 @@
 # Skills evaluation dashboard: what it shows and what we take from it
 
-Source: a dashboard the owner pasted into chat on 2026-10-01 as an example of an "LLM federation" (titled "Skills Evaluation Dashboard", tracking Copilot quality with and without skill plugins, covering dotnet, dotnet-ai, dotnet-aspnetcore, dotnet-blazor, dotnet-data, dotnet-diag, dotnet-maui, dotnet-msbuild, dotnet-nuget, dotnet-template-engine, dotnet-test, dotnet-test-migration, dotnet-upgrade and dotnet11). The owner described it as coming from the .NET skills material this session could not access earlier. Numbers below are read from the paste, not re-run or verified here.
+Source: the dashboard of the dotnet/skills project (confirmed by the owner 2026-10-01; its public page is https://dotnet.github.io/skills/ and a web search the same day describes the project's own validator, "skill-validator", which compares each skill against a no-skill baseline, with each skill's evaluation kept in the repo so it can be inspected and run). The owner pasted the dashboard into chat as an example of an "LLM federation" (titled "Skills Evaluation Dashboard", tracking Copilot quality with and without skill plugins, covering dotnet, dotnet-ai, dotnet-aspnetcore, dotnet-blazor, dotnet-data, dotnet-diag, dotnet-maui, dotnet-msbuild, dotnet-nuget, dotnet-template-engine, dotnet-test, dotnet-test-migration, dotnet-upgrade and dotnet11). The owner described it as coming from the .NET skills material this session could not access earlier. Numbers below are read from the paste, not re-run or verified here.
 
 ## How it is built (the federation part)
 
@@ -24,6 +24,10 @@ Source: a dashboard the owner pasted into chat on 2026-10-01 as an example of an
 3. **Copy the verdict discipline.** Minimum task count, activation rate, a "stays off" test, side-by-side judging and refusing to blend models and versions are the rules our eval gate should have. Each of our skills would need tasks where it should fire and tasks where it should not.
 4. **Zero model spend.** CI here makes no model calls and the owner has only Grok credits, so a real harness would run on local models (the i9) and a judge from a different family, outside CI. Proposal only, nothing built.
 5. **This is the model strengths table.** The strengths table in `competitors-and-models.md` should be filled from runs like these, with a date, task and model pair, never from impressions.
+
+## Reuse before build
+
+dotnet/skills already publishes its validator and per-skill evaluations. Before designing our own harness, read that tooling in full and check whether it can run against our skills, with local models and a different-family judge. Its licence (MIT per the earlier upstream pin) and whether it can run without paid model calls are not yet checked.
 
 ## Not covered or unverified
 
