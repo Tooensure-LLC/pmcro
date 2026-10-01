@@ -6,7 +6,7 @@ of truth; everything else (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/
 
 ## New plugins
 
-Start with `python tools/pmcro.py new-plugin pmcro-NAME --description "..."`; it creates a plugin that already satisfies every rule. Fill every `TODO` before you commit. The skill it creates starts with all three optional folders (`references/design.md`, `scripts/run.py`, `assets/templates/output.md.tmpl`) so the flow is templated and a small model does not have to guess; `validate` warns about prose-only skills.
+To add a skill to an existing plugin, use the `new-skill` skill (`plugins/pmcro-core/skills/new-skill/scripts/scaffold_skill.py`); its `assets/templates/` is the single template for the shape of every skill. To make a new plugin, start with `python tools/pmcro.py new-plugin pmcro-NAME --description "..."`; it creates a plugin that already satisfies every rule and uses the same template for its first skill. Fill every `TODO` before you commit. Every new skill starts with all three optional folders (`references/design.md`, `scripts/run.py`, `assets/templates/output.md.tmpl`) so the flow is templated and a small model does not have to guess; `validate` warns about prose-only skills.
 
 ## Before you push
 

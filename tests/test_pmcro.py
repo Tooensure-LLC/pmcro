@@ -1244,7 +1244,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
         expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
-                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp"}
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp", "new-skill"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -1561,3 +1561,48 @@ class OpenApiToSpec(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             r, out = self.convert(d, "--tag", "nope")
             self.assertEqual(r.returncode, 1)
+
+
+class NewSkillScaffold(unittest.TestCase):
+    """new-skill: adds a templated skill to an existing plugin; refuses bad input; leaves existing files alone."""
+    SCRIPT = REPO / "plugins/pmcro-core/skills/new-skill/scripts/scaffold_skill.py"
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        plug = self.tmp / "plugins/pmcro-demo"
+        (plug / "skills").mkdir(parents=True)
+        (plug / "plugin.json").write_text("{}")
+        (plug / "README.md").write_text("# demo\n\n## Skills\n\n| Skill | Use it to |\n| --- | --- |\n| `old` | existing |\n\n## Install\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def run_s(self, **kw):
+        args = {"plugin": "pmcro-demo", "name": "fresh-skill", "description": "Use when testing."}
+        args.update(kw)
+        cmd = [sys.executable, str(self.SCRIPT), "--plugins-dir", str(self.tmp / "plugins")]
+        for k, v in args.items():
+            cmd += [f"--{k}", v]
+        return subprocess.run(cmd, capture_output=True, text=True)
+
+    def test_creates_the_templated_shape_and_readme_row(self):
+        r = self.run_s()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        sk = self.tmp / "plugins/pmcro-demo/skills/fresh-skill"
+        for f in ("SKILL.md", "references/design.md", "scripts/run.py", "assets/templates/output.md.tmpl"):
+            self.assertTrue((sk / f).is_file(), f)
+        self.assertIn("name: fresh-skill", (sk / "SKILL.md").read_text())
+        self.assertNotIn("{{", "".join(p.read_text() for p in sk.rglob("*") if p.is_file() and p.name != "output.md.tmpl"))
+        readme = (self.tmp / "plugins/pmcro-demo/README.md").read_text()
+        self.assertIn("| `fresh-skill` | Use when testing. |", readme)
+        self.assertLess(readme.index("`old`"), readme.index("`fresh-skill`"))
+        self.assertLess(readme.index("`fresh-skill`"), readme.index("## Install"))
+
+    def test_refusals(self):
+        self.assertEqual(self.run_s(plugin="pmcro-nope").returncode, 1)
+        self.assertEqual(self.run_s(name="Bad_Name").returncode, 1)
+        self.assertEqual(self.run_s(description="x" * 1100).returncode, 1)
+        self.assertEqual(self.run_s().returncode, 0)
+        again = self.run_s()
+        self.assertEqual(again.returncode, 1)
+        self.assertIn("already exists", again.stderr)

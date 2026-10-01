@@ -1,5 +1,9 @@
 # Changelog: pmcro-core
 
+## 0.5.0
+
+- Added `new-skill`: creates a skill inside an existing plugin in the templated shape; its `assets/templates/` is now the single template for every new skill, and `tools/pmcro.py new-plugin` uses it for a plugin's first skill.
+
 ## 0.4.0
 
 - `inbox`: priority rubric (`references/priority.md`), `reprioritize` with a required reason and logged event, `list --stale DAYS` so no area starves, priority 0 needs `--reason`; an agent may raise but not lower a founder item.

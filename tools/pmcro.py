@@ -289,6 +289,16 @@ def cmd_gen(check):
     return 0
 
 
+def _load_scaffold_skill():
+    """Load the new-skill script, so a plugin's first skill is made from the same single template as every later one."""
+    import importlib.util
+    path = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pmcro-core" / "skills" / "new-skill" / "scripts" / "scaffold_skill.py"
+    spec = importlib.util.spec_from_file_location("scaffold_skill", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def cmd_new_plugin(name, description, skill, skill_description):
     """Scaffold plugins/<name>/ with manifest, README, CHANGELOG and one skill, then regenerate adapters."""
     if not NAME_RE.match(name) or RESERVED.search(name):
@@ -301,9 +311,7 @@ def cmd_new_plugin(name, description, skill, skill_description):
     if not NAME_RE.match(skill) or not (1 <= len(skill_description) <= 1024):
         print("refused: skill must be kebab-case and its description 1-1024 characters")
         return 2
-    sk = dest / "skills" / skill
-    for sub in ("references", "scripts", "assets/templates"):
-        (sk / sub).mkdir(parents=True)
+    dest.mkdir(parents=True)
     (dest / "plugin.json").write_text(json.dumps({"$schema": SCHEMA, "name": name, "version": "0.1.0",
                                                    "description": description, "skills": ["./skills/"]}, indent=2) + "\n")
     (dest / "README.md").write_text(f"""# {name}
@@ -314,7 +322,6 @@ def cmd_new_plugin(name, description, skill, skill_description):
 
 | Skill | Use it to |
 | --- | --- |
-| `{skill}` | {skill_description[:120]} |
 
 ## Install
 
@@ -327,48 +334,12 @@ def cmd_new_plugin(name, description, skill, skill_description):
 CANDIDATE. Scaffolded; nothing here is tested yet. Replace this line with what was and was NOT verified.
 """)
     (dest / "CHANGELOG.md").write_text(f"# Changelog: {name}\n\n## 0.1.0\n\n- Scaffolded with `tools/pmcro.py new-plugin`.\n")
-    (sk / "SKILL.md").write_text(f"""---
-name: {skill}
-description: {json.dumps(skill_description)}
-license: MIT
----
-
-# {skill}
-
-TODO: explain why this skill exists in two sentences.
-
-## Do this
-
-1. TODO: the common path, as numbered steps. Keep this file short; detail goes in `references/design.md`.
-2. Run `python scripts/run.py` for the exact work; do not redo it in prose.
-3. Fill `assets/templates/output.md.tmpl` for the result, so the shape is the same every time.
-
-## Never
-
-- TODO: what must never happen, and why.
-
-## Output contract
-
-TODO: the exact output to return and how it is verified. The template is `assets/templates/output.md.tmpl`.
-""")
-    (sk / "references" / "design.md").write_text(f"# {skill}: design notes\n\nTODO: the detail that does not belong in SKILL.md: why each step exists, edge cases, what is not covered.\n")
-    (sk / "scripts" / "run.py").write_text('''#!/usr/bin/env python3
-"""TODO: say in one sentence what this script does.
-
-TODO: its inputs, its output and its exit codes. The skill's exact work lives here, not in prose.
-"""
-import sys
-
-
-def main(argv):
-    print("TODO: implement")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
-''')
-    (sk / "assets" / "templates" / "output.md.tmpl").write_text("# TODO: result title\n\nTODO: the fixed shape of this skill's output, with {{placeholders}} for what varies.\n")
+    scaffold = _load_scaffold_skill()
+    try:
+        scaffold.scaffold(PLUGINS, name, skill, skill_description)
+    except scaffold.Refused as e:
+        print(f"refused: {e}")
+        return 2
     cmd_gen(check=False)
     print(f"created {dest.relative_to(ROOT)}; fill the TODOs, then run: python tools/pmcro.py validate")
     return 0
