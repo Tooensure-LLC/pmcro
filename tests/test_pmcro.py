@@ -610,6 +610,119 @@ class AccountRegistry(unittest.TestCase):
         self.assertNotEqual(self.r("posted", "A99").returncode, 0)
 
 
+def _draft():
+    p = REPO / "plugins/pmcro-capture/skills/capture-to-skill/scripts/draft_skill.py"
+    s = importlib.util.spec_from_file_location("draft_skill", p)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m
+
+
+def _png(extra=b""):
+    import struct, zlib
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    idat = zlib.compress(b"\x00\xff\x00\x00")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + extra + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+
+
+def _jpeg(with_exif=True):
+    import struct
+    exif = b"Exif\x00\x00GPSLatitude=51.5;Make=SecretPhone"
+    app1 = b"\xff\xe1" + struct.pack(">H", len(exif) + 2) + exif if with_exif else b""
+    com = b"\xff\xfe" + struct.pack(">H", 2 + 5) + b"hello"
+    sos = b"\xff\xda\x00\x02" + b"\x01\x02\x03" + b"\xff\xd9"
+    return b"\xff\xd8" + app1 + com + sos
+
+
+class CaptureToSkill(unittest.TestCase):
+    def setUp(self):
+        self.d = _draft()
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.src = self.tmp / "cap"
+        self.src.mkdir()
+        self.out = self.tmp / "out"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def run_draft(self, confirmed=True, name="bed-doc"):
+        return self.d.draft(self.src, name, "Use when learning the bed doc.", self.out, confirmed)
+
+    def test_jpeg_exif_and_comments_are_stripped_image_data_kept(self):
+        out = self.d.strip_jpeg(_jpeg())
+        self.assertNotIn(b"GPSLatitude", out)
+        self.assertNotIn(b"SecretPhone", out)
+        self.assertNotIn(b"hello", out)
+        self.assertTrue(out.startswith(b"\xff\xd8") and out.endswith(b"\xff\xd9"))
+        self.assertIn(b"\x01\x02\x03", out)
+
+    def test_png_text_chunks_are_stripped_and_png_still_valid(self):
+        import struct, zlib
+        text = struct.pack(">I", 16) + b"tEXt" + b"Author\x00Alice Doe" + struct.pack(">I", 0)
+        out = self.d.strip_png(_png(text))
+        self.assertNotIn(b"Alice Doe", out)
+        self.assertTrue(out.startswith(b"\x89PNG") and b"IEND" in out and b"IDAT" in out)
+
+    def test_refused_without_human_confirmation(self):
+        (self.src / "01.png").write_bytes(_png())
+        with self.assertRaises(SystemExit) as c:
+            self.run_draft(confirmed=False)
+        self.assertIn("confirm-reviewed", str(c.exception))
+        self.assertFalse(self.out.exists())
+
+    def test_non_image_and_unparsable_images_refused_and_nothing_written(self):
+        (self.src / "01.png").write_bytes(_png())
+        (self.src / "02.gif").write_bytes(b"GIF89a")
+        with self.assertRaises(SystemExit):
+            self.run_draft()
+        self.assertFalse((self.out / "bed-doc").exists())
+        (self.src / "02.gif").unlink()
+        (self.src / "02.png").write_bytes(b"not a png")
+        with self.assertRaises(SystemExit):
+            self.run_draft()
+
+    def test_bad_name_and_existing_destination_refused(self):
+        (self.src / "01.png").write_bytes(_png())
+        with self.assertRaises(SystemExit):
+            self.run_draft(name="Bad_Name")
+        self.run_draft()
+        with self.assertRaises(SystemExit):
+            self.run_draft()
+
+    def test_draft_copies_clean_images_maps_steps_and_marks_todos(self):
+        (self.src / "01.jpg").write_bytes(_jpeg())
+        (self.src / "02.png").write_bytes(_png())
+        (self.src / "steps.txt").write_text("Press the power button\n")
+        self.run_draft()
+        dest = self.out / "bed-doc"
+        self.assertNotIn(b"GPSLatitude", (dest / "assets/step01.jpg").read_bytes())
+        body = (dest / "SKILL.md").read_text()
+        self.assertIn("1. Press the power button", body)
+        self.assertIn("TODO: describe what to do in this step", body)
+        self.assertIn("NOT run or verified", body)
+        self.assertTrue((dest / "references/capture-notes.md").is_file())
+
+    def test_drafted_skill_passes_the_skill_validator(self):
+        (self.src / "01.png").write_bytes(_png())
+        self.run_draft()
+        errs = []
+        old = pmcro.ROOT
+        pmcro.ROOT = self.out
+        try:
+            pmcro.check_skill(self.out / "bed-doc", errs)
+        finally:
+            pmcro.ROOT = old
+        self.assertEqual(errs, [])
+
+    def test_too_many_images_refused(self):
+        for i in range(41):
+            (self.src / f"{i:02d}.png").write_bytes(_png())
+        with self.assertRaises(SystemExit):
+            self.run_draft()
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -673,7 +786,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]

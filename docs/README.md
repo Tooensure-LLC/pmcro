@@ -8,6 +8,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [imports.md](imports.md) | What was imported from older repos, what changed, defects found |
 | [offline-kit.md](offline-kit.md) | Packing the repo for an offline machine (tested) and the unattended runner design (not built) |
 | [dotagents.md](dotagents.md) | The dotagents convention: what was run and verified, consumer config, what is not verified |
+| [product/everything-as-agent.md](product/everything-as-agent.md) | EverythingAsAgent: capture to draft skill, the pipeline, and the conditions for any steps recorder |
 | [product/ghostwriter.md](product/ghostwriter.md) | Ghostwriter: phases from scripts to songs to voice, and the conditions for third-party voices |
 | [product/trail.md](product/trail.md) | Trail as a product: frame fields, rules, open questions |
 
@@ -33,5 +34,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0016](decisions/0016-self-reference-by-default-serve-everything-over-mcp.md) | Self-reference by default: every capability is also served over MCP |
 | [0017](decisions/0017-ghostwriter-phases-and-third-party-voices.md) | Ghostwriter phases; third-party voices only under contract |
 | [0018](decisions/0018-account-relief-without-credentials.md) | Relieve account overload without handing agents credentials |
+| [0019](decisions/0019-everything-as-agent-capture-to-skill.md) | EverythingAsAgent starts as capture to draft skill, privacy by default |
 
 New decision: copy the last record, increment the number, and add a row above.

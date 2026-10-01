@@ -1,6 +1,10 @@
 # 0016: Self-reference by default: every capability is also served over MCP
 
-Status: accepted principle; server proposed · 2026-10-01 (owner: "the company should by default [be] self-referential... think MCP server, AI agents")
+Status: PROPOSED (corrected 2026-10-01 after reading the architecture matrix) · first written 2026-10-01 (owner: "the company should by default [be] self-referential... think MCP server, AI agents")
+
+## Correction
+
+I first recorded this as an accepted principle. The company's own Architecture Approval Matrix keeps MCP projection (`.agents/mcp.json`) OPEN, and the architecture keeps "capability is not authority": PMCR-O is not MCP, and no skill is required to use MCP. So this ADR proposes only that plugins be *servable* over MCP as an option. Servable never means authorized, required or exposed by default to anyone. Until the owner approves it, nothing is served and no server is built.
 
 ## Context
 The company's design is self-referential: PMCR-O builds PMCR-O, trails train models on trails, the marketplace builds the marketplace. Figma's MCP already serves its own skills over `skill://index.json`, and MAF can consume that (`MCPSkillsSource`, experimental). The owner's existing .NET MCP servers use a Config / Tools / Resources / Prompts layout over stateless HTTP.
