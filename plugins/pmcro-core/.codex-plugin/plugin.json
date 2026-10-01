@@ -1,6 +1,6 @@
 {
   "name": "pmcro-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers.",
   "skills": [
     "./skills/"

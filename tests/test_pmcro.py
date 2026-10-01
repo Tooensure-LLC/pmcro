@@ -1,4 +1,4 @@
-import asyncio, importlib.util, json, pathlib, shutil, subprocess, sys, tempfile, unittest
+import asyncio, importlib.util, json, pathlib, re, shutil, subprocess, sys, tempfile, unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("pmcro", REPO / "tools/pmcro.py")
@@ -82,7 +82,7 @@ class ValidatorMustFail(Sandbox):
         self.expect("symlink")
 
     def test_bad_semver(self):
-        self.edit("plugins/pmcro-core/plugin.json", lambda t: t.replace("0.1.0", "latest"))
+        self.edit("plugins/pmcro-core/plugin.json", lambda t: re.sub(r'"version": "[^"]+"', '"version": "latest"', t))
         self.expect("semver")
 
     def test_reserved_plugin_name(self):
@@ -139,7 +139,7 @@ class DocsLaw(Sandbox):
         self.expect("not documented")
 
     def test_changelog_needs_current_version(self):
-        self.edit("plugins/pmcro-core/plugin.json", lambda t: t.replace("0.1.0", "0.2.0"))
+        self.edit("plugins/pmcro-core/plugin.json", lambda t: re.sub(r'"version": "[^"]+"', '"version": "9.9.9"', t))
         self.expect("CHANGELOG.md")
 
     def test_script_needs_docstring(self):
@@ -273,6 +273,87 @@ class LandingPageChecker(unittest.TestCase):
         self.assertNotRegex(src.split('"""', 2)[2], r'print\(.*\b(PASS|LOOP|HALT)\b')
 
 
+QUEUE = REPO / "plugins/pmcro-core/skills/inbox/scripts/queue.py"
+
+
+class InboxQueue(unittest.TestCase):
+    def setUp(self):
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.repo)
+
+    def q(self, *args):
+        return subprocess.run([sys.executable, str(QUEUE), *args], cwd=self.repo, capture_output=True, text=True)
+
+    def add(self, text, tier="private", pri="2", source="founder"):
+        return self.q("add", "--tier", tier, "--text", text, "--priority", pri, "--source", source)
+
+    def test_add_then_list(self):
+        self.assertIn("queued #0001", self.add("hello").stdout)
+        self.assertIn("queued", self.q("list", "--tier", "private").stdout)
+
+    def test_duplicate_text_returns_existing_item(self):
+        self.add("same")
+        r = self.add("same")
+        self.assertIn("duplicate", r.stdout)
+        self.assertEqual(len(list((self.repo / ".trail-local/private/inbox").glob("0*.json"))), 1)
+
+    def test_next_is_priority_then_oldest(self):
+        self.add("low", pri="3")
+        self.add("old normal", pri="2")
+        self.add("urgent", pri="0")
+        self.assertIn("urgent", self.q("next", "--tier", "private").stdout)
+        self.q("claim", "0003", "--tier", "private", "--by", "planner")
+        self.assertIn("old normal", self.q("next", "--tier", "private").stdout)
+
+    def test_second_claim_refused(self):
+        self.add("work")
+        self.assertEqual(self.q("claim", "0001", "--tier", "private", "--by", "a").returncode, 0)
+        r = self.q("claim", "0001", "--tier", "private", "--by", "b")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("already claimed", r.stderr)
+
+    def test_done_requires_claim(self):
+        self.add("work")
+        r = self.q("done", "0001", "--tier", "private", "--by", "maker")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("must be claimed", r.stderr)
+
+    def test_full_lifecycle_and_log_is_append_only(self):
+        self.add("work")
+        self.q("claim", "0001", "--tier", "private", "--by", "planner")
+        self.q("done", "0001", "--tier", "private", "--by", "planner", "--note", "ok", "--ref", "0007")
+        d = self.repo / ".trail-local/private/inbox"
+        events = [json.loads(x)["event"] for x in (d / "0001.events.jsonl").read_text().splitlines()]
+        self.assertEqual(events, ["queued", "claimed", "done"])
+        self.assertIn("done", self.q("list", "--tier", "private", "--status", "done").stdout)
+        self.assertNotIn("0001", self.q("next", "--tier", "private").stdout)
+
+    def test_message_text_is_stored_verbatim_and_never_rewritten(self):
+        self.add("  Messy   words ,, as typed  ")
+        d = self.repo / ".trail-local/private/inbox"
+        before = (d / "0001.json").read_text()
+        self.q("claim", "0001", "--tier", "private", "--by", "x")
+        self.assertEqual((d / "0001.json").read_text(), before)
+        self.assertEqual(json.loads(before)["text"], "  Messy   words ,, as typed  ")
+
+    def test_private_refused_when_not_gitignored(self):
+        (self.repo / ".gitignore").write_text("")
+        r = self.add("secret")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not gitignored", r.stderr)
+
+    def test_empty_message_refused(self):
+        self.assertNotEqual(self.add("   ").returncode, 0)
+
+    def test_public_tier_goes_to_trail_dir(self):
+        self.add("announce", tier="public")
+        self.assertTrue((self.repo / "trail/public/inbox/0001.json").is_file())
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -336,7 +417,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
