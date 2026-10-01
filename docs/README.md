@@ -37,5 +37,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0017](decisions/0017-ghostwriter-phases-and-third-party-voices.md) | Ghostwriter phases; third-party voices only under contract |
 | [0018](decisions/0018-account-relief-without-credentials.md) | Relieve account overload without handing agents credentials |
 | [0019](decisions/0019-everything-as-agent-capture-to-skill.md) | EverythingAsAgent starts as capture to draft skill, privacy by default |
+| [0020](decisions/0020-bip-delegated-decisions.md) | BIP: decisions are delegated to the seats; the reserved list; the decision log |
+| [0021](decisions/0021-shared-memory-is-the-founders-knowledge.md) | Shared memory is the founder's knowledge, tiered and human-accepted |
 
 New decision: copy the last record, increment the number, and add a row above.

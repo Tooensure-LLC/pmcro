@@ -737,6 +737,96 @@ class CaptureToSkill(unittest.TestCase):
             self.run_draft()
 
 
+MEMORY = REPO / "plugins/pmcro-memory/skills/shared-memory/scripts/memory.py"
+
+
+class SharedMemory(unittest.TestCase):
+    def setUp(self):
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+
+    def tearDown(self):
+        shutil.rmtree(self.repo)
+
+    def m(self, *args):
+        return subprocess.run([sys.executable, str(MEMORY), *args], cwd=self.repo, capture_output=True, text=True)
+
+    def add(self, title, text, tier="public", **kw):
+        args = ["add", "--tier", tier, "--title", title, "--text", text]
+        for k, v in kw.items():
+            args += [f"--{k.replace('_', '-')}", v]
+        return self.m(*args)
+
+    def test_add_and_search_ranks_title_over_body(self):
+        self.add("Cloudflare site", "notes about hosting")
+        self.add("Hosting notes", "the cloudflare account has one site")
+        out = self.m("search", "cloudflare").stdout.splitlines()
+        self.assertIn("Cloudflare site", out[0])
+
+    def test_search_finds_nothing_for_unknown_words(self):
+        self.add("A", "alpha")
+        self.assertIn("0 hits", self.m("search", "zzz").stdout)
+
+    def test_viewers_see_only_what_they_may(self):
+        self.add("pub fact", "shared word", tier="public")
+        self.add("co fact", "shared word", tier="company")
+        self.add("rt fact", "shared word", tier="roundtable", seats="cfo,cto")
+        self.add("priv fact", "shared word", tier="private")
+        def titles(v):
+            return {ln.split("] ")[1].split(" - ")[0] for ln in self.m("search", "shared", "--viewer", v).stdout.splitlines() if "[" in ln}
+        self.assertEqual(titles("public"), {"pub fact"})
+        self.assertEqual(titles("company"), {"pub fact", "co fact"})
+        self.assertEqual(titles("seat:cfo"), {"pub fact", "co fact", "rt fact"})
+        self.assertEqual(titles("seat:cmo"), {"pub fact", "co fact"})
+        self.assertEqual(titles("founder"), {"pub fact", "co fact", "rt fact", "priv fact"})
+
+    def test_show_refuses_an_entry_the_viewer_may_not_see(self):
+        self.add("secret", "x", tier="private")
+        r = self.m("show", "M0001", "--viewer", "company")
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_supersede_hides_old_and_keeps_it_on_disk(self):
+        self.add("Old", "wrong fact")
+        self.add("New", "right fact", supersedes="M0001")
+        self.assertNotIn("Old", self.m("list").stdout)
+        self.assertIn("Old", self.m("list", "--all").stdout)
+        self.assertTrue((self.repo / "trail/public/memory/M0001.md").is_file())
+
+    def test_supersede_unknown_refused(self):
+        self.assertNotEqual(self.add("N", "x", supersedes="M0099").returncode, 0)
+
+    def test_agent_cannot_mark_accepted_founder_can(self):
+        r = self.add("Lesson", "x", status="accepted")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("only the founder", r.stderr)
+        self.assertEqual(self.add("Lesson", "x", status="accepted", source="founder").returncode, 0)
+
+    def test_default_status_is_candidate(self):
+        self.add("Lesson", "x")
+        self.assertIn("candidate", self.m("list").stdout)
+
+    def test_credentials_refused(self):
+        r = self.add("Login", "password: hunter2")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("credentials", r.stderr)
+
+    def test_roundtable_requires_seats(self):
+        self.assertNotEqual(self.add("RT", "x", tier="roundtable").returncode, 0)
+
+    def test_private_refused_when_not_gitignored(self):
+        (self.repo / ".gitignore").write_text("")
+        r = self.add("P", "x", tier="private")
+        self.assertIn("not gitignored", r.stderr)
+
+    def test_tag_filter(self):
+        self.add("A", "alpha beta", tags="x")
+        self.add("B", "alpha beta", tags="y")
+        out = self.m("search", "alpha", "--tags", "y").stdout
+        self.assertIn("B", out)
+        self.assertNotIn("] A", out)
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -800,7 +890,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
