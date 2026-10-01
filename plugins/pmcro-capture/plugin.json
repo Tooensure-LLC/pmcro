@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "pmcro-capture",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn a captured demonstration (screenshots or photos plus notes) into a draft skill, with private metadata stripped and a human review gate.",
   "skills": [
     "./skills/"

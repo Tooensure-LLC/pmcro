@@ -716,6 +716,20 @@ class CaptureToSkill(unittest.TestCase):
             pmcro.ROOT = old
         self.assertEqual(errs, [])
 
+    def test_single_photo_as_the_argument_with_notes(self):
+        photo = self.tmp / "bed.jpg"
+        photo.write_bytes(_jpeg())
+        self.d.draft(photo, "bed-doc", "Use when learning the bed doc.", self.out, True, ["Read the label"])
+        dest = self.out / "bed-doc"
+        self.assertIn("1. Read the label", (dest / "SKILL.md").read_text())
+        self.assertNotIn(b"GPSLatitude", (dest / "assets/step01.jpg").read_bytes())
+
+    def test_single_unsupported_file_refused(self):
+        f = self.tmp / "doc.pdf"
+        f.write_bytes(b"%PDF-1.4")
+        with self.assertRaises(SystemExit):
+            self.d.draft(f, "x-doc", "d", self.out, True)
+
     def test_too_many_images_refused(self):
         for i in range(41):
             (self.src / f"{i:02d}.png").write_bytes(_png())

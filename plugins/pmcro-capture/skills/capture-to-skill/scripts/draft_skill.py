@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Draft an Agent Skill from a folder of screenshots or photos plus optional step notes.
 
-  python draft_skill.py <capture_dir> --name NAME --description "..." --out DIR --confirm-reviewed
-capture_dir holds .png/.jpg/.jpeg files (sorted by name = step order) and an optional steps.txt (one line per step,
-matched to images in order). Writes DIR/NAME/{SKILL.md, assets/stepNN.ext, references/capture-notes.md}.
+  python draft_skill.py <image-or-folder> --name NAME --description "..." --out DIR --confirm-reviewed [--notes "step text" ...]
+The first argument is ONE image file (a single photo) or a folder of .png/.jpg/.jpeg files (sorted by name = step order)
+with an optional steps.txt (one line per step, matched to images in order). --notes gives step text on the command line.
+Other inputs (PDF, text, video) are refused for now. Writes DIR/NAME/{SKILL.md, assets/stepNN.ext, references/capture-notes.md}.
 Safety: private metadata is ALWAYS stripped (JPEG Exif/XMP/comments, which can carry GPS location and device ids;
 PNG text, time and Exif chunks). An image that cannot be parsed is refused, not copied. --confirm-reviewed is
 required: it states that a human looked at every image and none shows passwords, personal data or other people;
@@ -72,16 +73,17 @@ def clean(path):
     raise ValueError("only .png, .jpg and .jpeg are accepted")
 
 
-def draft(src, name, description, out, confirmed):
+def draft(src, name, description, out, confirmed, notes=None):
     if not confirmed:
         sys.exit("refused: pass --confirm-reviewed after a human has looked at every image for passwords, personal data and other people")
     if not NAME_RE.match(name) or not 1 <= len(description) <= 1024:
         sys.exit("refused: name must be kebab-case and description 1-1024 characters")
     src, out = pathlib.Path(src), pathlib.Path(out)
-    files = sorted(p for p in src.iterdir() if p.is_file() and p.name != "steps.txt")
+    files = [src] if src.is_file() else sorted(p for p in src.iterdir() if p.is_file() and p.name != "steps.txt")
     if not files or len(files) > MAX_IMAGES:
         sys.exit(f"refused: need 1 to {MAX_IMAGES} images, found {len(files)}")
-    notes = [ln.strip() for ln in (src / "steps.txt").read_text().splitlines() if ln.strip()] if (src / "steps.txt").is_file() else []
+    if notes is None:
+        notes = [ln.strip() for ln in (src / "steps.txt").read_text().splitlines() if ln.strip()] if src.is_dir() and (src / "steps.txt").is_file() else []
     dest = out / name
     if dest.exists():
         sys.exit(f"refused: {dest} already exists")
@@ -135,7 +137,7 @@ Status: DRAFT from a capture. The steps were NOT run or verified. See `reference
 
 if __name__ == "__main__":
     a = argparse.ArgumentParser()
-    a.add_argument("capture_dir"); a.add_argument("--name", required=True); a.add_argument("--description", required=True)
-    a.add_argument("--out", required=True); a.add_argument("--confirm-reviewed", action="store_true")
+    a.add_argument("capture_dir", metavar="image_or_folder"); a.add_argument("--name", required=True); a.add_argument("--description", required=True)
+    a.add_argument("--out", required=True); a.add_argument("--confirm-reviewed", action="store_true"); a.add_argument("--notes", action="append")
     a = a.parse_args()
-    draft(a.capture_dir, a.name, a.description, a.out, a.confirm_reviewed)
+    draft(a.capture_dir, a.name, a.description, a.out, a.confirm_reviewed, a.notes)

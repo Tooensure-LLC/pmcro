@@ -13,9 +13,9 @@ automatically and will not run until a human confirms they looked at every image
 
 ## Do this
 
-1. **Collect.** Put the screenshots or photos in one folder, named so they sort in step order (`01.png`, `02.jpg`). Optionally add `steps.txt`, one line per step in the same order.
+1. **Collect.** One photo can be enough: pass the single image as the argument. For several, put the screenshots or photos in one folder, named so they sort in step order (`01.png`, `02.jpg`). Optionally add `steps.txt`, one line per step in the same order.
 2. **Review (human).** Ask the founder to look at every image and confirm none shows a password, personal data, a payment detail or another person. If any does, retake or crop it first. Do not proceed on a guess.
-3. **Draft.** Run `python <skill-dir>/scripts/draft_skill.py <folder> --name <kebab-name> --description "<when to use it>" --out <dir> --confirm-reviewed`. It copies the images with metadata removed and writes a `SKILL.md` plus a capture-notes file into the new skill folder.
+3. **Draft.** Run `python <skill-dir>/scripts/draft_skill.py <image-or-folder> --name <kebab-name> --description "<when to use it>" --out <dir> --confirm-reviewed`. It copies the images with metadata removed and writes a `SKILL.md` plus a capture-notes file into the new skill folder.
 4. **Fill the TODOs.** Replace every TODO: why the skill exists, what must never happen, how to confirm it worked. Describe each step from what the image shows; if you cannot tell what a step does, ask rather than invent.
 5. **Verify by doing.** A draft is not a skill until someone follows the steps and an independent Checker confirms the result. Say so in the status line. Only then add the skill to a plugin and run `python tools/pmcro.py validate`.
 
