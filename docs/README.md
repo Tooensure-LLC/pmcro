@@ -44,5 +44,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0021](decisions/0021-shared-memory-is-the-founders-knowledge.md) | Shared memory is the founder's knowledge, tiered and human-accepted |
 | [0022](decisions/0022-generate-the-owners-mcp-servers.md) | Generate the owner's MCP servers; the owner wires the connections |
 | [0024](decisions/0024-no-personal-names-in-the-application.md) | The owner's personal name is not in the application |
+| [0025](decisions/0025-generic-crud-design-from-the-owner.md) | The owner's generic CRUD design (BaseEntity, generic repository, unit of work) becomes a skill |
 
 New decision: copy the last record, increment the number, and add a row above.

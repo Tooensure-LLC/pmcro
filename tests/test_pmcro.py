@@ -1190,7 +1190,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
         expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
-                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill"}
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -1364,3 +1364,37 @@ class SftDatasetCheck(unittest.TestCase):
         finally:
             os.unlink(f.name)
         self.assertTrue(any("split leak" in x for x in rep["errors"]))
+
+
+class GenericCrudScaffold(unittest.TestCase):
+    """scaffold_crud.py: output shape and refusals (the generated C# is compiled only in CI)."""
+    SCRIPT = REPO / "plugins/pmcro-dotnet/skills/dotnet-generic-crud/scripts/scaffold_crud.py"
+
+    def run_s(self, *args):
+        return subprocess.run([sys.executable, str(self.SCRIPT), *args], capture_output=True, text=True)
+
+    def test_scaffold_and_add_entity(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = self.run_s("--out", d, "--namespace", "Acme.Shop", "--entity", "User:Name=string,Age=int?")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            root = pathlib.Path(d)
+            self.assertIn("Guid.NewGuid()", (root / "Domain/BaseEntity.cs").read_text())
+            self.assertIn("public int? Age", (root / "Domain/User.cs").read_text())
+            self.assertIn("GenericController<User>", (root / "Api/Controllers/UsersController.cs").read_text())
+            self.assertNotIn("{{", "".join(p.read_text() for p in root.rglob("*.cs")))
+            marker = root / "Domain/BaseEntity.cs"; marker.write_text("// edited")
+            r = self.run_s("--out", d, "--namespace", "Acme.Shop", "--entity", "Order:Total=decimal")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(marker.read_text(), "// edited")
+            self.assertTrue((root / "Api/Controllers/OrdersController.cs").exists())
+
+    def test_refusals(self):
+        with tempfile.TemporaryDirectory() as d:
+            for args in (["--namespace", "acme", "--entity", "User"], ["--namespace", "Acme", "--entity", "user"],
+                         ["--namespace", "Acme", "--entity", "User:Id=Guid"], ["--namespace", "Acme", "--entity", "User:X=object"]):
+                r = self.run_s("--out", d + "/x", *args)
+                self.assertEqual(r.returncode, 1, args)
+                self.assertIn("refused", r.stderr + r.stdout)
+            self.run_s("--out", d, "--namespace", "Acme", "--entity", "User")
+            r = self.run_s("--out", d, "--namespace", "Acme", "--entity", "User")
+            self.assertEqual(r.returncode, 1)

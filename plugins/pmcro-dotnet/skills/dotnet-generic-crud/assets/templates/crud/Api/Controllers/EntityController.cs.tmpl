@@ -1,0 +1,7 @@
+using {{Namespace}}.Application;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Api.Controllers;
+
+public class {{Entity}}sController(I{{Entity}}Repository repository, IUnitOfWork unitOfWork)
+    : GenericController<{{Entity}}>(repository, unitOfWork);

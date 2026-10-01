@@ -53,3 +53,26 @@ jobs:
           dotnet "$RUNNER_TEMP/server/bin/Release/net10.0/Pmcro.Mcp.Skills.dll" --urls http://127.0.0.1:5099 > "$RUNNER_TEMP/server.log" 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:5099/healthz && break || sleep 1; done
           python tests/smoke_dotnet_server.py http://127.0.0.1:5099/mcp 20 || { echo "--- server log ---"; cat "$RUNNER_TEMP/server.log"; exit 1; }
+
+  dotnet-crud:
+    # Compiles the generic CRUD scaffold and exercises it over HTTP (base entity, generic repository, unit of work, generic controller).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Scaffold
+        run: python plugins/pmcro-dotnet/skills/dotnet-generic-crud/scripts/scaffold_crud.py --out "$RUNNER_TEMP/crud" --namespace Acme.Shop --entity "User:Name=string,Email=string,Age=int?" --entity "Order:Total=decimal"
+      - name: Build
+        run: dotnet build "$RUNNER_TEMP/crud" -c Release
+      - name: Run and smoke-test
+        run: |
+          dotnet "$RUNNER_TEMP/crud/bin/Release/net10.0/Acme.Shop.dll" --urls http://127.0.0.1:5098 > "$RUNNER_TEMP/crud.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5098/healthz && break || sleep 1; done
+          python tests/smoke_crud_server.py http://127.0.0.1:5098 Users || { cat "$RUNNER_TEMP/crud.log"; exit 1; }
+          curl -sf http://127.0.0.1:5098/openapi/v1.json > /dev/null
+          curl -sf http://127.0.0.1:5098/scalar > /dev/null

@@ -1,0 +1,9 @@
+using {{Namespace}}.Application;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Infrastructure;
+
+// Nothing here unless this model needs a special query.
+public class {{Entity}}Repository(AppDbContext db) : GenericRepository<{{Entity}}>(db), I{{Entity}}Repository
+{
+}

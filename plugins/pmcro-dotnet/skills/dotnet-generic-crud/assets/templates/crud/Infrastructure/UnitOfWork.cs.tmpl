@@ -1,0 +1,12 @@
+using {{Namespace}}.Application;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Infrastructure;
+
+public class UnitOfWork(AppDbContext db, IServiceProvider services) : IUnitOfWork
+{
+    public IGenericRepository<T> Repository<T>() where T : BaseEntity =>
+        (IGenericRepository<T>)services.GetService(typeof(IGenericRepository<T>))!;
+
+    public Task<int> SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+}

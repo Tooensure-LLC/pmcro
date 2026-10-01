@@ -8,6 +8,7 @@
 | --- | --- |
 | `maf-local-skills` | Load skills into MAF with a script allow-list and approvals left on, and confirm every file is reachable (`scripts/list_skills.py`). |
 | `mcp-local-models` | Connect an Ollama-backed agent to MCP servers (GitHub MCP, the MSBuild binlog server, your own) with per-role tool allow-lists (`scripts/load_mcp.py`). |
+| `dotnet-generic-crud` | Scaffolds the owner's generic design: BaseEntity with Guid Id, generic repository, unit of work, generic controller, OpenAPI and Scalar. Add a model and get CRUD. |
 
 For MAUI, AI, MSBuild, test, ASP.NET Core and the rest of the .NET skills, install the pinned dotnet/skills plugins listed in the marketplace (see `docs/marketplace.md`) rather than looking for them here.
 
@@ -18,5 +19,8 @@ For MAUI, AI, MSBuild, test, ASP.NET Core and the rest of the .NET skills, insta
 ```
 
 ## Status
+
+`dotnet-generic-crud` is compiled and exercised over HTTP only in CI (job `dotnet-crud`); not yet verified there at the time of writing. Not built locally (no .NET SDK in the authoring session).
+
 
 CANDIDATE. Python paths are tested against `agent-framework` 1.19.0 and `mcp` 1.28.1 in CI (stdio fixture only). The .NET paths, a live Ollama model and the GitHub MCP server are NOT tested. See `references/` in each skill for the verified/unverified split.
