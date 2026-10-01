@@ -17,6 +17,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [product/training-data-spec.md](product/training-data-spec.md) | The owner's training-data contract, eligibility proposal, and what the validator found in the datasets (aggregate only) |
 | [product/tts-reader-review.md](product/tts-reader-review.md) | Read-only review of the uploaded TTS Reader Chrome extension: what it sends where, permissions, recommendation |
 | [product/competitors-and-models.md](product/competitors-and-models.md) | Competitors, the Agent Governance Toolkit, which model is good for what (owner's observations to fill in), and how much training data is enough, each marked sourced or owner observation |
+| [product/skills-evaluation.md](product/skills-evaluation.md) | The pasted .NET skills evaluation dashboard (an LLM federation): how it measures skills, what it shows, and what it means for our eval gate |
 | [product/trail.md](product/trail.md) | Trail as a product: frame fields, rules, open questions |
 
 ## Decision records
