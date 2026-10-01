@@ -20,7 +20,7 @@ For MAUI, AI, MSBuild, test, ASP.NET Core and the rest of the .NET skills, insta
 
 ## Status
 
-`dotnet-generic-crud` is compiled and exercised over HTTP only in CI (job `dotnet-crud`); not yet verified there at the time of writing. Not built locally (no .NET SDK in the authoring session).
+`dotnet-generic-crud` compiled and passed its HTTP smoke test (create, list, get, update, delete, 404s, `/openapi/v1.json`, `/scalar`) in CI job `dotnet-crud` on 2026-10-01. Not built locally (no .NET SDK in the authoring session). Not verified: a real database provider, migrations, auth, DTOs.
 
 
 CANDIDATE. Python paths are tested against `agent-framework` 1.19.0 and `mcp` 1.28.1 in CI (stdio fixture only). The .NET paths, a live Ollama model and the GitHub MCP server are NOT tested. See `references/` in each skill for the verified/unverified split.
