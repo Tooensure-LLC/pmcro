@@ -1,0 +1,162 @@
+import asyncio, importlib.util, json, pathlib, shutil, subprocess, sys, tempfile, unittest
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location("pmcro", REPO / "tools/pmcro.py")
+pmcro = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pmcro)
+RECORD = REPO / "plugins/pmcro-core/skills/trail-player/scripts/record.py"
+
+
+class Sandbox(unittest.TestCase):
+    """Copy the repo plugins into a temp tree and point the validator at it."""
+
+    def setUp(self):
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        shutil.copytree(REPO / "plugins", self.tmp / "plugins")
+        self.old = (pmcro.ROOT, pmcro.PLUGINS)
+        pmcro.ROOT, pmcro.PLUGINS = self.tmp, self.tmp / "plugins"
+        self.skill = self.tmp / "plugins/pmcro-dotnet/skills/maf-local-skills"
+
+    def tearDown(self):
+        pmcro.ROOT, pmcro.PLUGINS = self.old
+        shutil.rmtree(self.tmp)
+
+    def errors(self):
+        errs = []
+        for p in pmcro.plugin_dirs():
+            pmcro.load_plugin(p, errs)
+            for sk in (p / "skills").iterdir():
+                pmcro.check_skill(sk, errs)
+        return errs
+
+    def edit(self, rel, fn):
+        f = self.tmp / rel
+        f.write_text(fn(f.read_text()))
+
+
+class ValidatorMustPass(Sandbox):
+    def test_clean_tree_has_no_errors(self):
+        self.assertEqual(self.errors(), [])
+
+
+class ValidatorMustFail(Sandbox):
+    def expect(self, fragment):
+        errs = self.errors()
+        self.assertTrue(any(fragment in e for e in errs), f"{fragment!r} not in {errs}")
+
+    def test_non_spec_key(self):
+        self.edit("plugins/pmcro-dotnet/skills/maf-local-skills/SKILL.md", lambda t: t.replace("license: MIT", "license: MIT\nmodel: x", 1))
+        self.expect("non-spec frontmatter")
+
+    def test_name_dir_mismatch(self):
+        self.edit("plugins/pmcro-dotnet/skills/maf-local-skills/SKILL.md", lambda t: t.replace("name: maf-local-skills", "name: other", 1))
+        self.expect("must equal directory")
+
+    def test_long_description(self):
+        self.edit("plugins/pmcro-dotnet/skills/maf-local-skills/SKILL.md", lambda t: t.replace("description: ", "description: " + "x" * 1100 + " ", 1))
+        self.expect("1-1024")
+
+    def test_too_many_lines(self):
+        self.edit("plugins/pmcro-dotnet/skills/maf-local-skills/SKILL.md", lambda t: t + "\n" * 600)
+        self.expect("limit 500")
+
+    def test_missing_reference(self):
+        (self.skill / "references/maf-api.md").unlink()
+        self.expect("missing or outside")
+
+    def test_nested_reference(self):
+        (self.skill / "references/deep").mkdir()
+        (self.skill / "references/deep/x.md").write_text("x")
+        self.expect("one level deep")
+
+    def test_secret(self):
+        (self.skill / "references/maf-api.md").write_text("key sk-" + "a" * 30)
+        self.expect("credential-shaped")
+
+    def test_absolute_path(self):
+        (self.skill / "references/maf-api.md").write_text("see /home/bob/x")
+        self.expect("absolute path")
+
+    def test_symlink(self):
+        (self.skill / "assets/link.json").symlink_to(self.skill / "SKILL.md")
+        self.expect("symlink")
+
+    def test_bad_semver(self):
+        self.edit("plugins/pmcro-core/plugin.json", lambda t: t.replace("0.1.0", "latest"))
+        self.expect("semver")
+
+    def test_reserved_plugin_name(self):
+        shutil.move(self.tmp / "plugins/pmcro-core", self.tmp / "plugins/claude-core")
+        self.edit("plugins/claude-core/plugin.json", lambda t: t.replace("pmcro-core", "claude-core"))
+        self.expect("reserved")
+
+    def test_skills_path_escape(self):
+        self.edit("plugins/pmcro-core/plugin.json", lambda t: t.replace("./skills/", "../x/"))
+        self.expect("must start with ./")
+
+
+class AdaptersAreCurrent(unittest.TestCase):
+    def test_committed_adapters_match_generator(self):
+        self.assertEqual(pmcro.cmd_gen(check=True), 0)
+
+    def test_claude_manifest_has_no_schema_key(self):
+        m = json.loads((REPO / "plugins/pmcro-core/.claude-plugin/plugin.json").read_text())
+        self.assertNotIn("$schema", m)
+
+
+class MafProgressiveDisclosure(unittest.TestCase):
+    def test_all_skills_reachable_with_files(self):
+        try:
+            from agent_framework import FileSkillsSource, SkillsSourceContext
+        except ImportError:
+            self.skipTest("agent-framework not installed")
+        found = {}
+        for d in (REPO / "plugins").glob("*/skills"):
+            for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
+                found[s.frontmatter.name] = s
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills"}
+        self.assertEqual(set(found), expected)
+        tp = found["trail-player"]
+        self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
+        self.assertEqual([r.name for r in tp._scripts], ["scripts/record.py"])
+
+
+class TrailPlayerGuards(unittest.TestCase):
+    def setUp(self):
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        (self.repo / "e.txt").write_text("body")
+
+    def tearDown(self):
+        shutil.rmtree(self.repo)
+
+    def run_rec(self, *args):
+        return subprocess.run([sys.executable, str(RECORD), *args, "--body-file", str(self.repo / "e.txt")],
+                              cwd=self.repo, capture_output=True, text=True)
+
+    def test_private_refused_when_not_ignored(self):
+        r = self.run_rec("--tier", "private", "--kind", "habit")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not gitignored", r.stderr)
+
+    def test_private_written_when_ignored(self):
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        r = self.run_rec("--tier", "private", "--kind", "habit")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_roundtable_needs_seats(self):
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        r = self.run_rec("--tier", "roundtable", "--kind", "secret")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("seats", r.stderr)
+
+    def test_entries_are_numbered_and_never_overwritten(self):
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        self.run_rec("--tier", "private", "--kind", "note")
+        self.run_rec("--tier", "private", "--kind", "note")
+        names = sorted(p.name for p in (self.repo / ".trail-local/private").glob("*.json"))
+        self.assertEqual(names, ["0001-note.json", "0002-note.json"])
+
+
+if __name__ == "__main__":
+    unittest.main()

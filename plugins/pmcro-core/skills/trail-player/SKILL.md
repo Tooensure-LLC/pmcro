@@ -33,11 +33,11 @@ Read `references/tiers.md` when the person asks how a tier works, wants to chang
 3. **Choose the tier.** Propose one with a one-line reason, then confirm. For `roundtable`, also confirm which seats may read it.
 4. **Record** with the writer script, never by hand-editing files:
    ```
-   python skills/trail-player/scripts/record.py --tier private --kind confession --body-file entry.txt [--seats cfo,cto] [--summary "..."] [--refs 0007]
+   python <skill-dir>/scripts/record.py --tier private --kind confession --body-file entry.txt [--seats cfo,cto] [--summary "..."] [--refs 0007]
    ```
    Kinds: `goal`, `idea`, `secret`, `habit`, `problem`, `decision`, `note`. The script stamps the time from the clock, assigns the next number, sets the file location from the tier, and refuses to write `private` or `roundtable` entries anywhere that is not gitignored.
 5. **Confirm** what was recorded: number, tier, who can see it. Do not echo private content into any shared place.
-6. **Replay** with `python skills/trail-player/scripts/record.py --replay --tier private` (or another tier). Replaying shows only tiers the current reader is cleared for; as the founder, all of them.
+6. **Replay** with `python <skill-dir>/scripts/record.py --replay --tier private` (or another tier). Replaying shows only tiers the current reader is cleared for; as the founder, all of them.
 
 ## Economic note
 

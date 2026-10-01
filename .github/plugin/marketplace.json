@@ -1,0 +1,18 @@
+{
+  "name": "pmcro-plugins",
+  "owner": {
+    "name": "PMCR-O"
+  },
+  "plugins": [
+    {
+      "name": "pmcro-core",
+      "source": "./plugins/pmcro-core",
+      "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers."
+    },
+    {
+      "name": "pmcro-dotnet",
+      "source": "./plugins/pmcro-dotnet",
+      "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure."
+    }
+  ]
+}

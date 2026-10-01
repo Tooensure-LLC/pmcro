@@ -1,0 +1,6 @@
+{
+  "allowed_scripts": [
+    {"skill": "trail-player", "script": "scripts/record.py"}
+  ],
+  "note": "Only list scripts that are read-safe or that a human approved. Everything else is denied."
+}
