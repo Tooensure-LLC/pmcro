@@ -296,7 +296,7 @@ class InboxQueue(unittest.TestCase):
         return subprocess.run([sys.executable, str(QUEUE), *args], cwd=self.repo, capture_output=True, text=True)
 
     def add(self, text, tier="private", pri="2", source="founder"):
-        return self.q("add", "--tier", tier, "--text", text, "--priority", pri, "--source", source)
+        return self.q("add", "--tier", tier, "--text", text, "--priority", pri, "--source", source, "--reason", "test")
 
     def test_add_then_list(self):
         self.assertIn("queued #0001", self.add("hello").stdout)
@@ -315,6 +315,42 @@ class InboxQueue(unittest.TestCase):
         self.assertIn("urgent", self.q("next", "--tier", "private").stdout)
         self.q("claim", "0003", "--tier", "private", "--by", "planner")
         self.assertIn("old normal", self.q("next", "--tier", "private").stdout)
+
+    def test_priority_zero_needs_a_reason(self):
+        r = self.q("add", "--tier", "private", "--text", "urgent", "--priority", "0")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("needs --reason", r.stderr)
+
+    def test_reprioritize_is_logged_and_changes_order(self):
+        self.add("first", pri="2")
+        self.add("second", pri="2")
+        self.assertIn("first", self.q("next", "--tier", "private").stdout)
+        r = self.q("reprioritize", "0002", "--tier", "private", "--priority", "1", "--reason", "unblocks others", "--by", "planner")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("second", self.q("next", "--tier", "private").stdout)
+        self.assertIn("p1 queued", self.q("list", "--tier", "private").stdout)
+        events = (self.repo / ".trail-local/private/inbox/0002.events.jsonl").read_text()
+        self.assertIn("unblocks others", events)
+        self.assertEqual(self.q("claim", "0002", "--tier", "private", "--by", "x").returncode, 0)
+
+    def test_reprioritize_rules(self):
+        self.add("founder item", pri="1")
+        no_reason = self.q("reprioritize", "0001", "--tier", "private", "--priority", "0", "--reason", " ", "--by", "planner")
+        self.assertEqual(no_reason.returncode, 1)
+        lower = self.q("reprioritize", "0001", "--tier", "private", "--priority", "3", "--reason", "meh", "--by", "planner")
+        self.assertEqual(lower.returncode, 1)
+        self.assertIn("only the founder may lower", lower.stderr)
+        self.assertEqual(self.q("reprioritize", "0001", "--tier", "private", "--priority", "3", "--reason", "decided", "--by", "founder").returncode, 0)
+        self.q("claim", "0001", "--tier", "private", "--by", "a")
+        self.q("done", "0001", "--tier", "private", "--by", "a")
+        self.assertEqual(self.q("reprioritize", "0001", "--tier", "private", "--priority", "0", "--reason", "x", "--by", "a").returncode, 1)
+
+    def test_stale_lists_only_old_queued_items(self):
+        self.add("fresh")
+        self.assertIn("empty", self.q("list", "--tier", "private", "--stale", "14").stdout)
+        f = self.repo / ".trail-local/private/inbox/0001.json"
+        m = json.loads(f.read_text()); m["time"] = "2020-01-01T00:00:00+00:00"; f.write_text(json.dumps(m))
+        self.assertIn("fresh", self.q("list", "--tier", "private", "--stale", "14").stdout)
 
     def test_second_claim_refused(self):
         self.add("work")

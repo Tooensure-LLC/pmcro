@@ -13,7 +13,7 @@ and a worker must claim an item before touching it.
 ## Do this
 
 1. **Capture first, act later.** For each incoming message run `python <skill-dir>/scripts/queue.py add --tier <tier> --text "<verbatim>"`. Store the founder's words verbatim. Add several messages in one go if several arrived. Duplicate text returns the existing item, so a double send is harmless.
-2. **Choose the tier** like trail-player: `private` for anything personal or secret (default when unsure), `roundtable` for named seats, `company`, `public`. Set `--priority 0` to `3` (0 most urgent, default 2).
+2. **Choose the tier** like trail-player: `private` for anything personal or secret (default when unsure), `roundtable` for named seats, `company`, `public`. Set `--priority 0` to `3` (0 most urgent, default 2; 0 needs `--reason`). `references/priority.md` says what each level means; change one later with `reprioritize --reason`, and run `list --stale 14` regularly so no area starves.
 3. **Take work in order.** `queue.py next` shows the next item; `queue.py claim <id> --tier <t> --by <role>` takes it. If the claim is refused, someone else has it: run `next` again.
 4. **Triage before acting.** Read `references/triage.md`. A claimed item becomes a plan for the Planner, not an action. Do not do the work during triage.
 5. **Close it honestly.** `done`, `defer` or `drop` with `--by`, a `--note` saying what happened, and `--ref` to the trail frame that holds the result. Never mark done without evidence.
