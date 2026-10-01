@@ -64,6 +64,13 @@ class ValidatorMustFail(Sandbox):
         (self.skill / "references/maf-api.md").unlink()
         self.expect("missing or outside")
 
+    def test_directory_reference_ok_when_it_exists_and_refused_when_missing(self):
+        f = "plugins/pmcro-dotnet/skills/maf-local-skills/SKILL.md"
+        self.edit(f, lambda t: t + "\nSee `assets/` for examples.\n")
+        self.assertEqual(self.errors(), [])
+        self.edit(f, lambda t: t + "\nSee `assets/nope/` too.\n")
+        self.assertTrue(any("missing or outside" in e for e in self.errors()))
+
     def test_nested_reference(self):
         (self.skill / "references/deep").mkdir()
         (self.skill / "references/deep/x.md").write_text("x")
@@ -409,6 +416,125 @@ class CloudflareMcpConfig(unittest.TestCase):
             self.assertEqual(s["headers_from_env"], {"Authorization": "CLOUDFLARE_MCP_AUTH"}, name)
 
 
+FIG = REPO / "plugins/pmcro-figma/skills/figma-plugin-factory/scripts"
+
+
+def _fig(name):
+    s = importlib.util.spec_from_file_location(name, FIG / f"{name}.py")
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m
+
+
+class FigmaRenderer(unittest.TestCase):
+    def setUp(self):
+        self.r = _fig("render_template")
+        self.meta = json.loads((self.r.ROOT / "grid-frames/template.json").read_text())
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def render(self, **given):
+        d, meta = self.r.load("grid-frames")
+        vals = self.r.values(meta, {k: str(v) for k, v in given.items()})
+        return self.r.render((d / "code.ts.tmpl").read_text(), vals), self.r.render((d / "ui.html.tmpl").read_text(), vals)
+
+    def test_defaults_render_and_lint_clean(self):
+        code, ui = self.render()
+        self.assertEqual(_fig("lint_plugin").lint(code, ui), [])
+
+    def test_int_out_of_range_refused(self):
+        with self.assertRaises(SystemExit):
+            self.render(count=101)
+
+    def test_non_integer_refused(self):
+        with self.assertRaises(SystemExit):
+            self.render(count="abc")
+
+    def test_unknown_parameter_refused(self):
+        with self.assertRaises(SystemExit):
+            self.render(nonsense=1)
+
+    def test_multiline_string_refused(self):
+        with self.assertRaises(SystemExit):
+            self.render(prefix="a\nb")
+
+    def test_hostile_text_cannot_break_out_of_html_or_script(self):
+        code, ui = self.render(prefix='"><script>alert(1)</script>', plugin_title="x */ evil(); /*")
+        self.assertNotIn("<script>alert(1)</script>", ui)
+        self.assertNotIn("*/ evil", code)
+
+    def test_js_filter_escapes_script_close_and_quotes(self):
+        out = self.r.fmt('a"b</script>', "js")
+        self.assertNotIn("</", out)
+        self.assertTrue(out.startswith('"') and out.endswith('"'))
+
+    def test_template_limits_match_code_clamps(self):
+        code, _ = self.render()
+        for p in self.meta["params"]:
+            if p["type"] == "int" and p["name"] in ("columns", "width", "height", "gap"):
+                self.assertIn(f"{p['min']}, {p['max']}", code, p["name"])
+
+    def test_unknown_template_refused(self):
+        with self.assertRaises(SystemExit):
+            self.r.load("nope")
+
+
+class FigmaLinter(unittest.TestCase):
+    def setUp(self):
+        self.lint = _fig("lint_plugin").lint
+        r = _fig("render_template")
+        d, meta = r.load("grid-frames")
+        v = r.values(meta, {})
+        self.code, self.ui = r.render((d / "code.ts.tmpl").read_text(), v), r.render((d / "ui.html.tmpl").read_text(), v)
+
+    def has(self, rule, code=None, ui=None):
+        errs = self.lint(self.code if code is None else code, self.ui if ui is None else ui)
+        self.assertTrue(any(rule in e for e in errs), f"{rule} not in {errs}")
+
+    def test_F001_show_ui(self):
+        self.has("F001", code=self.code.replace("figma.showUI(__html__", "figma.showUI('x'"))
+
+    def test_F002_structure(self):
+        self.has("F002", ui=self.ui.replace("<fig-footer>", "<div>"))
+
+    def test_F003_network(self):
+        self.has("F003", code=self.code + "\nfetch('https://x.example')")
+
+    def test_F004_secret(self):
+        self.has("F004", code=self.code + "\nconst k = 'ghp_" + "a" * 36 + "'")
+
+    def test_F005_eval(self):
+        self.has("F005", code=self.code + "\neval('1')")
+
+    def test_F006_current_page_assignment(self):
+        self.has("F006", code=self.code + "\nfigma.currentPage = p")
+
+    def test_F007_sync_getter(self):
+        self.has("F007", code=self.code + "\nfigma.getNodeById('1:1')")
+
+    def test_F008_foreach_async(self):
+        self.has("F008", code=self.code + "\nxs.forEach(async (x) => {})")
+
+    def test_F009_both_directions(self):
+        self.has("F009", ui=self.ui.replace("type: 'run'", "type: 'launch'"))
+        self.has("F009", code=self.code.replace("type: 'status'", "type: 'progress'"))
+
+    def test_F010_relaunch(self):
+        self.has("F010", code=self.code.replace("setRelaunchData", "noop"))
+
+    def test_F011_font(self):
+        self.has("F011", code=self.code + "\nnode.characters = 'x'")
+
+    def test_F012_as_any(self):
+        self.has("F012", code=self.code + "\nconst x = y as any")
+
+    def test_never_prints_a_checker_verdict(self):
+        src = (FIG / "lint_plugin.py").read_text().split('"""', 2)[2]
+        self.assertNotRegex(src, r'print\(.*\b(PASS|LOOP|HALT)\b')
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -472,7 +598,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]

@@ -1,0 +1,43 @@
+// {{plugin_title|js_comment}} (rendered from the grid-frames template)
+const PANEL_WIDTH = 280
+const MAX_COUNT = {{count_max|int}}
+
+type UiMessage =
+  | { type: 'resize'; height: number }
+  | { type: 'run'; count: number; columns: number; width: number; height: number; gap: number; prefix: string }
+
+figma.showUI(__html__, { width: PANEL_WIDTH, height: 360 })
+figma.root.setRelaunchData({ open: 'Create a grid of frames' })
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, Math.round(Number(value) || min)))
+
+figma.ui.onmessage = async (message: UiMessage) => {
+  if (message.type === 'resize') {
+    figma.ui.resize(PANEL_WIDTH, clamp(message.height, 120, 900))
+    return
+  }
+  if (message.type === 'run') {
+    const count = clamp(message.count, 1, MAX_COUNT)
+    const columns = clamp(message.columns, 1, 10)
+    const width = clamp(message.width, 40, 1000)
+    const height = clamp(message.height, 40, 1000)
+    const gap = clamp(message.gap, 0, 200)
+    const prefix = String(message.prefix || '').slice(0, 40)
+    const origin = figma.viewport.center
+    const created: FrameNode[] = []
+    for (let i = 0; i < count; i++) {
+      const frame = figma.createFrame()
+      frame.name = `${prefix} ${i + 1}`
+      frame.resize(width, height)
+      frame.x = origin.x + (i % columns) * (width + gap)
+      frame.y = origin.y + Math.floor(i / columns) * (height + gap)
+      figma.currentPage.appendChild(frame)
+      frame.setRelaunchData({ open: 'Create another grid' })
+      created.push(frame)
+    }
+    figma.currentPage.selection = created
+    figma.viewport.scrollAndZoomIntoView(created)
+    figma.ui.postMessage({ type: 'status', text: `Created ${created.length} frames` })
+  }
+}

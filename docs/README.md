@@ -28,5 +28,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0012](decisions/0012-file-based-message-queue.md) | A file-based message queue for the founder's messages |
 | [0013](decisions/0013-simulated-trails-are-not-evidence.md) | Simulated trails are not evidence |
 | [0014](decisions/0014-cloudflare-mcp-read-first-allowlists.md) | Cloudflare MCP: read first, per-role allow-lists |
+| [0015](decisions/0015-figma-factory-composes-with-figma-mcp.md) | The Figma factory composes with Figma's MCP, it does not proxy it |
+| [0016](decisions/0016-self-reference-by-default-serve-everything-over-mcp.md) | Self-reference by default: every capability is also served over MCP |
 
 New decision: copy the last record, increment the number, and add a row above.

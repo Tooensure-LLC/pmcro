@@ -30,6 +30,11 @@
       "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure."
     },
     {
+      "name": "pmcro-figma",
+      "source": "./plugins/pmcro-figma",
+      "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP."
+    },
+    {
       "name": "dotnet",
       "source": {
         "source": "git-subdir",

@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-figma",
+  "version": "0.1.0",
+  "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP.",
+  "skills": [
+    "./skills/"
+  ]
+}

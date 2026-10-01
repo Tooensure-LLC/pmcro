@@ -1,0 +1,13 @@
+{
+  "name": "grid-frames",
+  "description": "Create a grid of empty frames near the viewport centre.",
+  "params": [
+    {"name": "plugin_title", "type": "string", "default": "Grid of frames", "max_length": 60},
+    {"name": "count", "type": "int", "default": 6, "min": 1, "max": 100},
+    {"name": "columns", "type": "int", "default": 3, "min": 1, "max": 10},
+    {"name": "width", "type": "int", "default": 200, "min": 40, "max": 1000},
+    {"name": "height", "type": "int", "default": 150, "min": 40, "max": 1000},
+    {"name": "gap", "type": "int", "default": 16, "min": 0, "max": 200},
+    {"name": "prefix", "type": "string", "default": "Frame", "max_length": 40}
+  ]
+}

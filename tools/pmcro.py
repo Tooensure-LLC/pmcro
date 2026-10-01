@@ -69,7 +69,7 @@ def check_skill(d, errors):
     for ref in {a or b for a, b in LINK.findall(body)}:
         if any(c in ref for c in "<>*"):  # placeholder in prose, not a link
             continue
-        if ".." in ref or not (d / ref).is_file():
+        if ".." in ref or not (d / ref).exists():  # a directory link is fine when it exists
             errors.append(f"{where}: referenced file {ref} missing or outside skill")
     for sub in ("references", "scripts", "assets"):
         base = d / sub
