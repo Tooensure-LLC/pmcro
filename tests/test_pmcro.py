@@ -218,6 +218,61 @@ class ContentScriptChecker(unittest.TestCase):
         self.assertNotRegex(body, r'print\(.*\b(PASS|LOOP|HALT)\b')
 
 
+def _check_landing():
+    p = REPO / "plugins/pmcro-cloudflare/skills/landing-page/scripts/check_landing.py"
+    s = importlib.util.spec_from_file_location("check_landing", p)
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m.check
+
+
+PAGE = """<html><head><title>T</title><meta name="description" content="d"></head><body>
+<p>We earn a commission on purchases through links here.</p>
+<a href="https://net.example/o?ref=1" rel="sponsored nofollow">Buy</a>
+<a href="/privacy">Privacy policy</a></body></html>"""
+
+
+class LandingPageChecker(unittest.TestCase):
+    def errs(self, html, domains=("net.example",)):
+        return _check_landing()(html, domains)[0]
+
+    def test_good_page_has_no_errors(self):
+        self.assertEqual(self.errs(PAGE), [])
+
+    def test_shipped_template_passes(self):
+        t = (REPO / "plugins/pmcro-cloudflare/skills/landing-page/assets/landing-template.html").read_text()
+        self.assertEqual(self.errs(t, ("example-network.com",)), [])
+
+    def test_missing_title_and_meta(self):
+        self.assertTrue(any("title" in e for e in self.errs(PAGE.replace("<title>T</title>", ""))))
+        self.assertTrue(any("meta" in e for e in self.errs(PAGE.replace('<meta name="description" content="d">', ""))))
+
+    def test_affiliate_link_needs_sponsored(self):
+        self.assertTrue(any("sponsored" in e for e in self.errs(PAGE.replace("sponsored nofollow", "nofollow"))))
+
+    def test_disclosure_must_come_before_first_affiliate_link(self):
+        late = PAGE.replace("<p>We earn a commission on purchases through links here.</p>", "")
+        late = late.replace("</body>", "<p>We earn a commission.</p></body>")
+        self.assertTrue(any("disclosure" in e for e in self.errs(late)))
+
+    def test_ref_query_key_detected_without_domain_list(self):
+        no_rel = PAGE.replace(' rel="sponsored nofollow"', "")
+        self.assertTrue(any("sponsored" in e for e in self.errs(no_rel, ())))
+
+    def test_income_promises_refused(self):
+        self.assertTrue(any("income" in e for e in self.errs(PAGE.replace("Buy", "Guaranteed income, get rich"))))
+
+    def test_privacy_link_required(self):
+        self.assertTrue(any("privacy" in e for e in self.errs(PAGE.replace("Privacy policy", "Terms"))))
+
+    def test_token_refused(self):
+        self.assertTrue(any("credential" in e for e in self.errs(PAGE + "ghp_" + "a" * 36)))
+
+    def test_never_prints_a_checker_verdict(self):
+        src = (REPO / "plugins/pmcro-cloudflare/skills/landing-page/scripts/check_landing.py").read_text()
+        self.assertNotRegex(src.split('"""', 2)[2], r'print\(.*\b(PASS|LOOP|HALT)\b')
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -281,7 +336,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]

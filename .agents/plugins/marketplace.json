@@ -5,6 +5,11 @@
   },
   "plugins": [
     {
+      "name": "pmcro-cloudflare",
+      "source": "./plugins/pmcro-cloudflare",
+      "description": "PMCR-O website and landing-page setup on Cloudflare, with affiliate-disclosure checks, trail frames for each step, and deploys gated behind human approval."
+    },
+    {
       "name": "pmcro-content",
       "source": "./plugins/pmcro-content",
       "description": "PMCR-O content creation: scripts in the founder's own voice with sourced claims, and guardrails for synthetic voice and image."

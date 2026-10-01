@@ -24,5 +24,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0008](decisions/0008-synthetic-media-own-voice-local-disclosed.md) | Synthetic media: own voice, local, disclosed |
 | [0009](decisions/0009-offline-kit-and-unattended-runner.md) | Offline kit; unattended runner stays read-only |
 | [0010](decisions/0010-content-pipeline-drives-existing-tools.md) | Content pipeline drives existing tools; the founder approves |
+| [0011](decisions/0011-cloudflare-sites-build-check-never-deploy.md) | Cloudflare site work builds and checks; humans deploy |
 
 New decision: copy the last record, increment the number, and add a row above.
