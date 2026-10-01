@@ -40,6 +40,11 @@
       "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP."
     },
     {
+      "name": "pmcro-mcpserver",
+      "source": "./plugins/pmcro-mcpserver",
+      "description": "Generate the company's MCP servers: a read-only server that serves every plugin's skills with progressive disclosure, plus a .NET server generator in the owner's pattern."
+    },
+    {
       "name": "pmcro-memory",
       "source": "./plugins/pmcro-memory",
       "description": "Shared, tiered, append-only memory for the founder and every agent: the company's knowledge, searchable, with provenance and human-owned acceptance."

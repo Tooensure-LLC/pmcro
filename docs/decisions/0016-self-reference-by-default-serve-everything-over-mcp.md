@@ -6,6 +6,8 @@ Status: PROPOSED (corrected 2026-10-01 after reading the architecture matrix) ·
 
 I first recorded this as an accepted principle. The company's own Architecture Approval Matrix keeps MCP projection (`.agents/mcp.json`) OPEN, and the architecture keeps "capability is not authority": PMCR-O is not MCP, and no skill is required to use MCP. So this ADR proposes only that plugins be *servable* over MCP as an option. Servable never means authorized, required or exposed by default to anyone. Until the owner approves it, nothing is served and no server is built.
 
+> Update: the owner approved generating the servers (ADR 0022). Servable-by-default for every skill is still not a mandate; MCP projection stays OPEN in the architecture matrix.
+
 ## Context
 The company's design is self-referential: PMCR-O builds PMCR-O, trails train models on trails, the marketplace builds the marketplace. Figma's MCP already serves its own skills over `skill://index.json`, and MAF can consume that (`MCPSkillsSource`, experimental). The owner's existing .NET MCP servers use a Config / Tools / Resources / Prompts layout over stateless HTTP.
 

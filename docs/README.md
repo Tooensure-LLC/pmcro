@@ -40,5 +40,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0019](decisions/0019-everything-as-agent-capture-to-skill.md) | EverythingAsAgent starts as capture to draft skill, privacy by default |
 | [0020](decisions/0020-bip-delegated-decisions.md) | BIP: decisions are delegated to the seats; the reserved list; the decision log |
 | [0021](decisions/0021-shared-memory-is-the-founders-knowledge.md) | Shared memory is the founder's knowledge, tiered and human-accepted |
+| [0022](decisions/0022-generate-the-owners-mcp-servers.md) | Generate the owner's MCP servers; the owner wires the connections |
 
 New decision: copy the last record, increment the number, and add a row above.

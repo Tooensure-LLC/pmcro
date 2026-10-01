@@ -1,0 +1,38 @@
+using System.ComponentModel;
+using System.Text.Json;
+using ModelContextProtocol.Server;
+using {{Namespace}}.Configuration;
+
+namespace {{Namespace}}.Tools;
+
+/// <summary>Read-only tools. Resources are the preferred path; these exist for clients that only call tools.</summary>
+[McpServerToolType]
+public sealed class SkillTools(SkillsConfig config)
+{
+    [McpServerTool(Name = "ListSkills")]
+    [Description("List the skills this server serves: name and a short description. Load one with LoadSkill.")]
+    public string ListSkills()
+    {
+        var skills = new List<object>();
+        foreach (var dir in Directory.GetDirectories(config.SkillsRoot))
+        {
+            var skillsDir = Path.Combine(dir, "skills");
+            if (!Directory.Exists(skillsDir)) continue;
+            foreach (var skillDir in Directory.GetDirectories(skillsDir))
+            {
+                var md = Path.Combine(skillDir, "SKILL.md");
+                if (File.Exists(md) && config.IsServableTextFile(md))
+                    skills.Add(new { name = Path.GetFileName(skillDir), plugin = Path.GetFileName(dir) });
+            }
+        }
+        return JsonSerializer.Serialize(new { skills });
+    }
+
+    [McpServerTool(Name = "LoadSkill")]
+    [Description("Return one skill's SKILL.md. Read-only. Supporting files are separate resources, loaded only when needed.")]
+    public string LoadSkill(string plugin, string skill)
+    {
+        var path = config.ResolveAndValidatePath(Path.Combine(plugin, "skills", skill, "SKILL.md"));
+        return config.IsServableTextFile(path) ? File.ReadAllText(path) : "refused: not a servable file";
+    }
+}

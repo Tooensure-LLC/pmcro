@@ -1,0 +1,30 @@
+// {{ServerName}}: read-only skills server (progressive disclosure over MCP).
+// Layout follows the owner's existing MCP servers: Configuration, Tools, Resources, Prompts, stateless HTTP.
+
+using {{Namespace}}.Configuration;
+using {{Namespace}}.Prompts;
+using {{Namespace}}.Resources;
+using {{Namespace}}.Tools;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// The config singleton enforces the sandbox boundary for every other pillar.
+builder.Services.AddSingleton<SkillsConfig>();
+builder.Services.AddSingleton<SkillTools>();
+builder.Services.AddSingleton<SkillResources>();
+builder.Services.AddSingleton<SkillPrompts>();
+
+// Stateless HTTP transport, as the owner's other servers use.
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport(options => { options.Stateless = true; })
+    .WithTools<SkillTools>()
+    .WithResources<SkillResources>()
+    .WithPrompts<SkillPrompts>();
+
+var app = builder.Build();
+
+app.MapMcp("/mcp");
+app.MapGet("/healthz", () => Results.Ok(new { service = "{{ServerName}}", status = "ok" }));
+
+app.Run();

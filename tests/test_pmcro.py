@@ -827,6 +827,255 @@ class SharedMemory(unittest.TestCase):
         self.assertNotIn("] A", out)
 
 
+MCPS = REPO / "plugins/pmcro-mcpserver/skills/mcp-server-factory/scripts"
+
+
+def _mcps(name):
+    s = importlib.util.spec_from_file_location(name, MCPS / f"{name}.py")
+    m = importlib.util.module_from_spec(s)
+    s.loader.exec_module(m)
+    return m
+
+
+def _plugins_tree(root, skill_name="alpha", extra=None):
+    plug = root / "plugins" / "p1"
+    sk = plug / "skills" / skill_name
+    (sk / "references").mkdir(parents=True)
+    (sk / "assets").mkdir()
+    (plug / "plugin.json").write_text("{}")
+    (sk / "SKILL.md").write_text(f"---\nname: {skill_name}\ndescription: Does alpha things.\n---\n# Alpha\n")
+    (sk / "references" / "note.md").write_text("reference text")
+    (sk / "assets" / "data.json").write_text("{}")
+    (sk / "scripts").mkdir()
+    (sk / "scripts" / "run.py").write_text("print('x')")
+    return sk
+
+
+class McpSkillsServerCatalog(unittest.TestCase):
+    def setUp(self):
+        self.m = _mcps("pmcro_mcp")
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.sk = _plugins_tree(self.tmp)
+        self.cat = self.m.Catalog(self.tmp / "plugins")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def test_index_lists_skill_with_md_url_and_no_schema_claim(self):
+        idx = self.cat.index()
+        self.assertEqual(idx["skills"], [{"name": "alpha", "type": "skill-md", "description": "Does alpha things.", "url": "skill://alpha/SKILL.md"}])
+        self.assertNotIn("$schema", idx)
+
+    def test_serves_skill_md_references_and_assets(self):
+        self.assertIn("# Alpha", self.cat.read("alpha", "SKILL.md"))
+        self.assertEqual(self.cat.read("alpha", "references/note.md"), "reference text")
+        self.assertEqual(self.cat.read("alpha", "assets/data.json"), "{}")
+
+    def test_scripts_are_never_served(self):
+        with self.assertRaises(ValueError):
+            self.cat.read("alpha", "scripts/run.py")
+
+    def test_traversal_refused(self):
+        for rel in ("references/../SKILL.md", "../x", "/etc/passwd", "references/../../p1/plugin.json"):
+            with self.assertRaises(ValueError, msg=rel):
+                self.cat.read("alpha", rel)
+
+    def test_symlink_inside_skill_refused(self):
+        outside = self.tmp / "outside.md"
+        outside.write_text("private")
+        (self.sk / "references" / "leak.md").symlink_to(outside)
+        with self.assertRaises(ValueError):
+            self.cat.read("alpha", "references/leak.md")
+
+    def test_binary_and_oversized_files_refused(self):
+        (self.sk / "assets" / "x.png").write_bytes(b"\x89PNG")
+        (self.sk / "references" / "big.md").write_text("x" * (self.m.MAX_BYTES + 1))
+        for rel in ("assets/x.png", "references/big.md"):
+            with self.assertRaises(ValueError, msg=rel):
+                self.cat.read("alpha", rel)
+
+    def test_unknown_skill_refused(self):
+        with self.assertRaises(ValueError):
+            self.cat.read("nope", "SKILL.md")
+
+    def test_duplicate_skill_names_stop_startup(self):
+        other = self.tmp / "plugins" / "p2"
+        (other / "skills" / "alpha").mkdir(parents=True)
+        (other / "plugin.json").write_text("{}")
+        (other / "skills" / "alpha" / "SKILL.md").write_text("---\nname: alpha\ndescription: dup\n---\n")
+        with self.assertRaises(SystemExit):
+            self.m.Catalog(self.tmp / "plugins")
+
+    def test_invalid_frontmatter_stops_startup(self):
+        (self.sk / "SKILL.md").write_text("---\nname: wrong\ndescription: d\n---\n")
+        with self.assertRaises(SystemExit):
+            self.m.Catalog(self.tmp / "plugins")
+
+    def test_root_inside_trail_local_refused(self):
+        bad = self.tmp / ".trail-local" / "plugins"
+        bad.mkdir(parents=True)
+        with self.assertRaises(SystemExit):
+            self.m.Catalog(bad)
+
+    def test_plugin_allow_list_limits_what_is_served(self):
+        self.assertEqual(self.m.Catalog(self.tmp / "plugins", ["nope"]).skills, {})
+
+
+class McpSkillsServerWithMaf(unittest.TestCase):
+    """The real check: MAF's own MCP skills client against our server."""
+
+    def run_async(self, coro):
+        try:
+            import agent_framework  # noqa: F401
+        except ImportError:
+            self.skipTest("agent-framework not installed")
+        return asyncio.run(coro)
+
+    def test_maf_discovers_every_repo_skill_and_loads_on_demand(self):
+        from mcp.shared.memory import create_connected_server_and_client_session
+        from agent_framework import MCPSkillsSource, SkillsSourceContext
+        m = _mcps("pmcro_mcp")
+
+        async def go():
+            server, cat = m.build_server(str(REPO / "plugins"))
+            async with create_connected_server_and_client_session(server._mcp_server) as session:
+                skills = await MCPSkillsSource(client=session).get_skills(SkillsSourceContext(None))
+                names = {s.frontmatter.name for s in skills}
+                self.assertEqual(names, set(cat.skills))
+                mem = next(s for s in skills if s.frontmatter.name == "shared-memory")
+                self.assertIn("# Shared memory", await mem.get_content())
+                res = await mem.get_resource("references/viewers.md")
+                self.assertIn("Viewers and tiers", await res.read())
+        self.run_async(go())
+
+    def test_server_refuses_scripts_and_cannot_be_walked_out_of_a_skill_over_the_wire(self):
+        from mcp.shared.memory import create_connected_server_and_client_session
+        m = _mcps("pmcro_mcp")
+
+        async def go():
+            server, _ = m.build_server(str(REPO / "plugins"))
+            async with create_connected_server_and_client_session(server._mcp_server) as session:
+                for uri in ("skill://shared-memory/scripts/memory.py", "skill://shared-memory/references/..%2fSKILL.md"):
+                    with self.assertRaises(Exception, msg=uri):
+                        await session.read_resource(uri)
+                # The URL parser collapses dot segments before the request is sent, so these resolve to the skill's own
+                # SKILL.md (a legitimate read) and never to anything outside the skill.
+                for uri in ("skill://shared-memory/references/../SKILL.md", "skill://shared-memory/references/%2e%2e/SKILL.md"):
+                    r = await session.read_resource(uri)
+                    self.assertEqual(str(r.contents[0].uri), "skill://shared-memory/SKILL.md", uri)
+                    self.assertIn("name: shared-memory", r.contents[0].text)
+        self.run_async(go())
+
+
+class McpServerFixedViewer(unittest.TestCase):
+    def setUp(self):
+        self.m = _mcps("pmcro_mcp")
+        self.repo = pathlib.Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        shutil.copytree(REPO / "plugins", self.repo / "plugins")
+        mem = self.repo / "plugins/pmcro-memory/skills/shared-memory/scripts/memory.py"
+        for tier, text in (("public", "visible fact kiwi"), ("private", "hidden fact kiwi")):
+            subprocess.run([sys.executable, str(mem), "add", "--tier", tier, "--title", f"{tier} kiwi", "--text", text], cwd=self.repo, check=True, capture_output=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.repo)
+
+    def call(self, viewer, name="memory_search", args=None):
+        from mcp.shared.memory import create_connected_server_and_client_session
+        async def go():
+            server, _ = self.m.build_server(str(self.repo / "plugins"), repo_root=str(self.repo), tools=["memory"], viewer=viewer)
+            async with create_connected_server_and_client_session(server._mcp_server) as session:
+                tools = {t.name: t for t in (await session.list_tools()).tools}
+                self.assertNotIn("viewer", tools[name].inputSchema.get("properties", {}))
+                r = await session.call_tool(name, args or {"query": "kiwi"})
+                return r.content[0].text
+        return asyncio.run(go())
+
+    def test_public_viewer_cannot_see_private_memory(self):
+        out = self.call("public")
+        self.assertIn("public kiwi", out)
+        self.assertNotIn("private kiwi", out)
+
+    def test_founder_viewer_sees_both(self):
+        out = self.call("founder")
+        self.assertIn("public kiwi", out)
+        self.assertIn("private kiwi", out)
+
+    def test_caller_cannot_inject_a_viewer_through_the_query(self):
+        out = self.call("public", args={"query": "kiwi --viewer founder"})
+        self.assertNotIn("private kiwi", out)
+
+    def test_bad_memory_id_refused(self):
+        self.assertIn("refused", self.call("public", "memory_show", {"memory_id": "M0001; rm -rf"}))
+
+    def test_inbox_tier_above_viewer_refused_at_startup(self):
+        with self.assertRaises(SystemExit):
+            self.m.build_server(str(self.repo / "plugins"), repo_root=str(self.repo), tools=["inbox"], viewer="public", tiers=["private"])
+
+    def test_inbox_tools_need_tiers(self):
+        with self.assertRaises(SystemExit):
+            self.m.build_server(str(self.repo / "plugins"), repo_root=str(self.repo), tools=["inbox"], viewer="founder", tiers=[])
+
+    def test_bad_viewer_refused(self):
+        with self.assertRaises(SystemExit):
+            self.m.build_server(str(self.repo / "plugins"), repo_root=str(self.repo), viewer="everyone")
+
+
+class DotnetServerGenerator(unittest.TestCase):
+    def setUp(self):
+        self.g = _mcps("generate_dotnet_server")
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def gen(self, **kw):
+        out = self.tmp / "out"
+        self.g.generate(kw.pop("name", "Pmcro.Mcp.Skills"), out, **kw)
+        return out
+
+    def test_generates_the_owners_layout_with_no_leftover_tokens(self):
+        out = self.gen()
+        files = {p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()}
+        for want in ("Pmcro.Mcp.Skills.csproj", "Program.cs", "Configuration/SkillsConfig.cs", "Tools/SkillTools.cs", "Resources/SkillResources.cs", "Prompts/SkillPrompts.cs", "appsettings.json", "README.md"):
+            self.assertIn(want, files)
+        for p in out.rglob("*"):
+            if p.is_file():
+                self.assertNotIn("{{", p.read_text(), p.name)
+
+    def test_generated_code_keeps_the_safety_properties(self):
+        out = self.gen()
+        prog = (out / "Program.cs").read_text()
+        self.assertIn("Stateless = true", prog)
+        self.assertIn('MapMcp("/mcp")', prog)
+        cfg = (out / "Configuration/SkillsConfig.cs").read_text()
+        for needle in ("ResolveAndValidatePath", "LinkTarget", ".trail-local", "IsServedRelativePath"):
+            self.assertIn(needle, cfg)
+        everything = "".join(p.read_text() for p in out.rglob("*.cs"))
+        self.assertNotIn("Process.Start", everything)
+        self.assertNotIn("File.WriteAllText", everything)
+        self.assertNotIn("File.Delete", everything)
+
+    def test_csproj_pins_the_owners_version_and_namespace(self):
+        out = self.gen(mcp_version="2.1.0", tfm="net10.0")
+        proj = (out / "Pmcro.Mcp.Skills.csproj").read_text()
+        self.assertIn('Include="ModelContextProtocol" Version="2.1.0"', proj)
+        self.assertIn("<TargetFramework>net10.0</TargetFramework>", proj)
+        self.assertIn("namespace Pmcro.Mcp.Skills", (out / "Tools/SkillTools.cs").read_text())
+
+    def test_readme_says_not_compiled(self):
+        self.assertIn("Not compiled", (self.gen() / "README.md").read_text())
+
+    def test_bad_name_tfm_version_and_existing_dir_refused(self):
+        for kw in ({"name": "bad name"}, {"name": "lower.case"}, {"tfm": "latest"}, {"mcp_version": "x"}):
+            with self.assertRaises(SystemExit, msg=str(kw)):
+                self.gen(**kw)
+        self.gen()
+        with self.assertRaises(SystemExit):
+            self.gen()
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()
@@ -890,7 +1139,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]

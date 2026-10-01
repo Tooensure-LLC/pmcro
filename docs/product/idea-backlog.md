@@ -33,7 +33,7 @@ Status: maintained by hand from the 2026-10-01 session. Summaries only: no perso
 | 26 | The Round Table: the Chiefs' exchanges as a transcript page with one voice per Chief | EXISTS in `Tooensure-LLC/pmcro-round-table` (trail 0004, 8 blocks so far, all Chief of Staff); not built here | that repo | the public repo shows 8 verbatim founder seeds: review the disclosure tier (see queue) |
 | 27 | Learn Colab; cognitive agents | DOCS (notes from one search) | `product/colab-and-cognitive-agents.md` | notebook template and data-eligibility check NOT BUILT |
 | 28 | Shared memory (the founder's knowledge) | BUILT | `pmcro-memory`, ADR 0021 | MCP exposure with a server-fixed viewer |
-| 29 | Generate the owner's MCP servers; the owner wires the connections | IN PROGRESS | ADR 0022 | see the next commit |
+| 29 | Generate the owner's MCP servers; the owner wires the connections | BUILT (Python server tested with MAF); .NET generator written, NOT COMPILED | `pmcro-mcpserver`, ADR 0022 | owner connects clients; compile the .NET project |
 
 ## Decisions waiting on the owner
 
