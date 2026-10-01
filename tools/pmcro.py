@@ -121,6 +121,32 @@ def load_plugin(p, errors):
     return m
 
 
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def upstreams():
+    f = ROOT / "upstream.json"
+    return json.loads(f.read_text())["upstreams"] if f.is_file() else []
+
+
+def check_upstreams(errors):
+    local = {p.name for p in plugin_dirs()}
+    seen = set()
+    for u in upstreams():
+        n = u.get("name", "?")
+        if not NAME_RE.match(str(n)) or RESERVED.search(str(n)):
+            errors.append(f"upstream.json: bad or reserved name {n!r}")
+        if n in seen or n in local:
+            errors.append(f"upstream.json: duplicate plugin name {n!r}")
+        seen.add(n)
+        if not SHA40.match(str(u.get("sha", ""))):
+            errors.append(f"upstream.json: {n} sha must be a full 40-character lowercase commit, not a branch or tag")
+        if not re.match(r"^[\w.-]+/[\w.-]+$", str(u.get("repo", ""))):
+            errors.append(f"upstream.json: {n} repo must be owner/repo")
+        if not u.get("path") or ".." in u["path"] or u["path"].startswith("/"):
+            errors.append(f"upstream.json: {n} path must be a relative subdirectory")
+
+
 def generated():
     """Return {relative path: content} for every generated file."""
     out = {}
@@ -133,7 +159,14 @@ def generated():
         for sub in (".claude-plugin", ".cursor-plugin", ".codex-plugin"):
             out[f"{rel}/{sub}/plugin.json"] = json.dumps(claude, indent=2) + "\n"
     market = json.dumps({"name": MARKETPLACE, "owner": OWNER, "plugins": entries}, indent=2) + "\n"
-    for path in (".claude-plugin/marketplace.json", ".cursor-plugin/marketplace.json", ".github/plugin/marketplace.json"):
+    # Pinned upstream entries use the git-subdir source, documented for Claude Code only
+    # (code.claude.com marketplace-reference). Other hosts get local plugins only until verified.
+    claude_entries = entries + [
+        {"name": u["name"], "source": {"source": "git-subdir", "url": u["repo"], "path": u["path"], "sha": u["sha"]},
+         "description": u["description"]} for u in upstreams()]
+    claude_market = json.dumps({"name": MARKETPLACE, "owner": OWNER, "plugins": claude_entries}, indent=2) + "\n"
+    out[".claude-plugin/marketplace.json"] = claude_market
+    for path in (".cursor-plugin/marketplace.json", ".github/plugin/marketplace.json"):
         out[path] = market
     # Codex layout is from secondary sources; unverified. Keep it identical in shape until checked.
     out[".agents/plugins/marketplace.json"] = market
@@ -167,6 +200,7 @@ def cmd_validate():
         for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
             if sk.is_dir():
                 check_skill(sk, errors)
+    check_upstreams(errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
     for skill, n in outside_links():

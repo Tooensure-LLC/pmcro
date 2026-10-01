@@ -104,6 +104,59 @@ class AdaptersAreCurrent(unittest.TestCase):
         self.assertNotIn("$schema", m)
 
 
+class UpstreamPins(Sandbox):
+    def setUp(self):
+        super().setUp()
+        self.up = self.tmp / "upstream.json"
+        shutil.copy(REPO / "upstream.json", self.up)
+
+    def check(self, mutate):
+        data = json.loads(self.up.read_text())
+        mutate(data["upstreams"])
+        self.up.write_text(json.dumps(data))
+        errs = []
+        pmcro.check_upstreams(errs)
+        return errs
+
+    def test_shipped_pins_are_clean(self):
+        self.assertEqual(self.check(lambda u: None), [])
+
+    def test_branch_instead_of_sha_refused(self):
+        errs = self.check(lambda u: u[0].update(sha="main"))
+        self.assertTrue(any("40-character" in e for e in errs))
+
+    def test_short_or_uppercase_sha_refused(self):
+        self.assertTrue(self.check(lambda u: u[0].update(sha=u[0]["sha"][:7])))
+        self.assertTrue(self.check(lambda u: u[0].update(sha=u[0]["sha"].upper())))
+
+    def test_duplicate_name_refused(self):
+        errs = self.check(lambda u: u[1].update(name=u[0]["name"]))
+        self.assertTrue(any("duplicate" in e for e in errs))
+
+    def test_clash_with_local_plugin_refused(self):
+        errs = self.check(lambda u: u[0].update(name="pmcro-core"))
+        self.assertTrue(any("duplicate" in e for e in errs))
+
+    def test_path_escape_refused(self):
+        self.assertTrue(self.check(lambda u: u[0].update(path="../x")))
+
+
+class UpstreamEntriesInMarketplace(unittest.TestCase):
+    def test_claude_file_lists_pinned_git_subdir_entries(self):
+        m = json.loads((REPO / ".claude-plugin/marketplace.json").read_text())
+        subdir = [p for p in m["plugins"] if isinstance(p["source"], dict)]
+        self.assertEqual(len(subdir), len(pmcro.upstreams()))
+        self.assertIn("dotnet-maui", {p["name"] for p in subdir})
+        for p in subdir:
+            self.assertEqual(p["source"]["source"], "git-subdir")
+            self.assertRegex(p["source"]["sha"], r"^[0-9a-f]{40}$")
+
+    def test_other_hosts_get_local_plugins_only(self):
+        for f in (".cursor-plugin", ".github/plugin"):
+            m = json.loads((REPO / f / "marketplace.json").read_text())
+            self.assertTrue(all(isinstance(p["source"], str) for p in m["plugins"]), f)
+
+
 class MafProgressiveDisclosure(unittest.TestCase):
     def test_all_skills_reachable_with_files(self):
         try:

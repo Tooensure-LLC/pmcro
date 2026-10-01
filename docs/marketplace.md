@@ -9,6 +9,16 @@ Status: CANDIDATE. Built 2026-10-01; no independent Checker has run.
 - **Same shape as** [dotnet/skills](https://github.com/dotnet/skills): one folder per plugin, identical per-host manifests, marketplace file per host.
 - **Marketplace name** `pmcro-plugins`. The validator rejects names containing claude, anthropic, grok, copilot, codex or agent-skills.
 
+## Reusing dotnet/skills (pinned upstream)
+
+`upstream.json` lists plugins we reuse from [dotnet/skills](https://github.com/dotnet/skills) (MIT) instead of copying them: MAUI, AI, MSBuild (with its binlog MCP server), test, ASP.NET Core, Blazor, data, NuGet, upgrade, diagnostics, template engine and .NET 11. `gen` writes each as a `git-subdir` entry pinned to a full 40-character commit (`973cffb`, 2026-10-01), so installs never move until we change the pin.
+
+- **Install:** `/plugin install dotnet-maui@pmcro-plugins`. Install only what a seat needs; every installed skill adds to the model's menu.
+- **Update:** change `sha` in `upstream.json`, run `python tools/pmcro.py gen`, review upstream's diff, push.
+- **Rules (enforced):** sha must be a full lowercase commit, names must not clash with local plugins, paths must stay inside the repo.
+- **Format:** `git-subdir` with `url`, `path` and `sha` is documented in Claude Code's marketplace reference. Only `.claude-plugin/marketplace.json` carries these entries; Cursor, Copilot and Codex support for object sources is unverified, so those files list local plugins only. Copilot users can add dotnet/skills directly.
+- **Not verified here:** an actual install of a pinned entry (needs the `claude` CLI and network to GitHub).
+
 ## CI (no model spend)
 
 `.github/workflows/ci.yml` runs the validator, the unit tests and a MAF reachability check on every push and pull request. It uses no secrets and calls no model, so it costs nothing in Grok or any other credits. Actions are pinned by tag (`@v4`, `@v5`), not by commit SHA; pin by SHA before treating CI as supply-chain safe.
