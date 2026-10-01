@@ -1190,7 +1190,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
         expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
-                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto"}
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -1307,3 +1307,60 @@ class McpThroughMaf(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SftDatasetCheck(unittest.TestCase):
+    """validate_sft.py: must-fail cases for the pmcro-sft-working-v2 contract."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        p = REPO / "plugins/pmcro-training/skills/sft-dataset-check/scripts/validate_sft.py"
+        spec = importlib.util.spec_from_file_location("validate_sft", p)
+        cls.m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.m)
+
+    def rec(self, **meta):
+        base = {"example_id": "T-1", "schema_version": "pmcro-sft-working-v2", "kind": "guard_reasoning",
+                "sources": ["s"], "provenance": ["OPEN"], "source_state": ["OPEN"], "expected_state": None,
+                "architecture_disposition": None, "invariants": [], "open_items": [], "candidate_items": [],
+                "requires_correction": False, "requires_refusal": False, "difficulty": "easy", "domain": ["x"],
+                "tags": [], "split": "train", "self_check_expected": True, "independent_checker_required": True,
+                "eligibility_state": "CANDIDATE"}
+        base.update(meta)
+        return {"messages": [{"role": "system", "content": "I AM a PMCR-O assistant."},
+                             {"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}], "meta": base}
+
+    def errs(self, r):
+        return self.m.check_record(1, r, "v2", self.m.KINDS)
+
+    def test_valid_record_has_no_errors(self):
+        self.assertEqual(self.errs(self.rec())[0], [])
+
+    def test_must_fail_cases(self):
+        for meta in ({"kind": "nope"}, {"provenance": ["MADE_UP"]}, {"split": "dev"}, {"eligibility_state": "DONE"},
+                     {"architecture_disposition": "MAYBE"}):
+            self.assertTrue(self.errs(self.rec(**meta))[0], meta)
+        r = self.rec(); r["messages"][1]["role"] = "assistant"
+        self.assertTrue(self.errs(r)[0])
+        r = self.rec(); r["messages"][2]["content"] = " "
+        self.assertTrue(self.errs(r)[0])
+
+    def test_guard_warnings_and_eligible_notice(self):
+        r = self.rec(eligibility_state="ELIGIBLE")
+        r["messages"][2]["content"] = "MATCH = PASS in every Trail."
+        w = self.errs(r)[1]
+        self.assertTrue(any("G12" in x for x in w) and any("ELIGIBLE" in x for x in w))
+        r["messages"][2]["content"] = "No: MATCH is not = PASS."
+        self.assertFalse(any("G12" in x for x in self.errs(r)[1]))
+
+    def test_split_leak_is_error(self):
+        import json, tempfile, os
+        a, b = self.rec(example_id="A"), self.rec(example_id="B", split="test")
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as f:
+            f.write(json.dumps(a) + "\n" + json.dumps(b) + "\n")
+        try:
+            rep = self.m.check_file(f.name, "v2", self.m.KINDS)
+        finally:
+            os.unlink(f.name)
+        self.assertTrue(any("split leak" in x for x in rep["errors"]))

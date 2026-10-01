@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "pmcro-training",
+  "version": "0.1.0",
+  "description": "Validate and gate PMCR-O fine-tuning datasets (SFT JSONL) against the owner's working schema before any training run.",
+  "skills": [
+    "./skills/"
+  ]
+}

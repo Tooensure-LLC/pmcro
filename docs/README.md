@@ -14,6 +14,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [product/colab-and-cognitive-agents.md](product/colab-and-cognitive-agents.md) | Learning notes: Colab for cheap fine-tuning, the data rules, and what a cognitive agent means here |
 | [product/everything-as-agent.md](product/everything-as-agent.md) | EverythingAsAgent: capture to draft skill, the pipeline, and the conditions for any steps recorder |
 | [product/ghostwriter.md](product/ghostwriter.md) | Ghostwriter: phases from scripts to songs to voice, and the conditions for third-party voices |
+| [product/training-data-spec.md](product/training-data-spec.md) | The owner's training-data contract, eligibility proposal, and what the validator found in the datasets (aggregate only) |
 | [product/trail.md](product/trail.md) | Trail as a product: frame fields, rules, open questions |
 
 ## Decision records

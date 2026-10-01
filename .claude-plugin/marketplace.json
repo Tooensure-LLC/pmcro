@@ -55,6 +55,11 @@
       "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts."
     },
     {
+      "name": "pmcro-training",
+      "source": "./plugins/pmcro-training",
+      "description": "Validate and gate PMCR-O fine-tuning datasets (SFT JSONL) against the owner's working schema before any training run."
+    },
+    {
       "name": "dotnet",
       "source": {
         "source": "git-subdir",
