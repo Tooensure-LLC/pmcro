@@ -10,7 +10,7 @@ An MCP server over a platform API is a tool, not an agent: it does the same fixe
 
 ## Do this
 
-1. Write a spec like `assets/examples/example-api.json`: platform name, the two environment variable names (base URL, token), and the operations. Copy endpoints from the platform's own documentation; never from memory.
+1. If the platform publishes an OpenAPI document, convert it: `python scripts/openapi_to_spec.py --openapi API.json --name Acme.Mcp.Shop --platform "Acme Shop" --base-url-env ACME_BASE_URL --token-env ACME_TOKEN --out spec.json` (read-only by default; `--include-writes` keeps the rest, marked as writes; `--tag` narrows to 30 operations). Otherwise write a spec like `assets/examples/example-api.json` by hand from the platform's own documentation, never from memory. `assets/examples/example-openapi.json` shows the input shape.
 2. Run `python scripts/generate_platform_mcp.py --spec SPEC.json --out DIR`. It refuses a bad spec and prints why.
 3. Build with `dotnet build`, set the two environment variables, and run it. Writes stay refused until `Platform__AllowWrites=true` is set for that run.
 4. Give each role only the operations it needs through the allow-list in `mcp-local-models`.

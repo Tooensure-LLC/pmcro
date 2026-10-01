@@ -1505,3 +1505,59 @@ class PlatformMcpGenerator(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             (pathlib.Path(d) / "out").mkdir()
             self.assertEqual(self.run_gen(self.example(), d + "/out").returncode, 1)
+
+
+class OpenApiToSpec(unittest.TestCase):
+    """openapi_to_spec.py: conversion rules and refusals; its output must pass the generator's own validation."""
+    DIR = REPO / "plugins/pmcro-mcpserver/skills/platform-api-mcp"
+    SCRIPT = DIR / "scripts/openapi_to_spec.py"
+    GEN = DIR / "scripts/generate_platform_mcp.py"
+    EXAMPLE = DIR / "assets/examples/example-openapi.json"
+
+    def convert(self, tmp, *extra, openapi=None):
+        out = pathlib.Path(tmp) / "spec.json"
+        r = subprocess.run([sys.executable, str(self.SCRIPT), "--openapi", str(openapi or self.EXAMPLE), "--name", "Pmcro.Mcp.Shop",
+                            "--platform", "Example Shop", "--base-url-env", "SHOP_BASE_URL", "--token-env", "SHOP_TOKEN",
+                            "--out", str(out), *extra], capture_output=True, text=True)
+        return r, out
+
+    def test_default_is_read_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            r, out = self.convert(d)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            ops = json.loads(out.read_text())["operations"]
+            self.assertEqual({o["method"] for o in ops}, {"GET"})
+            self.assertEqual([o["name"] for o in ops], ["ListOrders", "GetOrder", "GetProducts"])
+            self.assertIn("skipped", r.stdout)
+
+    def test_writes_are_marked_and_names_are_made_safe(self):
+        with tempfile.TemporaryDirectory() as d:
+            r, out = self.convert(d, "--include-writes")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            ops = {o["name"]: o for o in json.loads(out.read_text())["operations"]}
+            self.assertTrue(ops["CreateOrder"]["write"] and ops["DeleteOrder"]["write"])
+            self.assertNotIn("write", ops["GetOrder"])
+            self.assertEqual(ops["GetOrder"]["path"], "/orders/{orderId}")
+            self.assertEqual([p["name"] for p in ops["GetProducts"]["params"]], ["classValue"])
+            self.assertEqual(ops["CreateOrder"]["params"], [{"name": "body", "in": "body"}])
+            gen = subprocess.run([sys.executable, str(self.GEN), "--spec", str(out), "--out", str(pathlib.Path(d) / "srv")],
+                                 capture_output=True, text=True)
+            self.assertEqual(gen.returncode, 0, gen.stderr)
+
+    def test_tag_filter_and_refusals(self):
+        with tempfile.TemporaryDirectory() as d:
+            r, out = self.convert(d, "--tag", "catalog")
+            self.assertEqual([o["name"] for o in json.loads(out.read_text())["operations"]], ["GetProducts"])
+        with tempfile.TemporaryDirectory() as d:
+            r, _ = self.convert(d, "--include-writes", "--max-ops", "2")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("narrow with --tag", r.stderr)
+            self.assertIn("orders (4)", r.stderr)
+        with tempfile.TemporaryDirectory() as d:
+            bad = pathlib.Path(d) / "bad.json"; bad.write_text('{"swagger": "2.0"}')
+            r, _ = self.convert(d, openapi=bad)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("OpenAPI 3", r.stderr)
+        with tempfile.TemporaryDirectory() as d:
+            r, out = self.convert(d, "--tag", "nope")
+            self.assertEqual(r.returncode, 1)

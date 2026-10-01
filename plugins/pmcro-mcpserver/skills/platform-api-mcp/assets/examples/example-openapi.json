@@ -1,0 +1,20 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Example Shop API", "version": "1.0.0"},
+  "paths": {
+    "/orders": {
+      "get": {"operationId": "list_orders", "tags": ["orders"], "summary": "List orders.",
+               "parameters": [{"name": "page-size", "in": "query", "schema": {"type": "integer"}},
+                              {"name": "X-Trace", "in": "header", "schema": {"type": "string"}}]},
+      "post": {"operationId": "create-order", "tags": ["orders"], "summary": "Create an order.", "requestBody": {"content": {"application/json": {}}}}
+    },
+    "/orders/{order_id}": {
+      "parameters": [{"name": "order_id", "in": "path", "required": true, "schema": {"type": "string"}}],
+      "get": {"operationId": "getOrder", "tags": ["orders"], "summary": "Fetch one order."},
+      "delete": {"operationId": "deleteOrder", "tags": ["orders"], "summary": "Delete an order."}
+    },
+    "/products": {
+      "get": {"tags": ["catalog"], "summary": "List products.", "parameters": [{"name": "class", "in": "query", "schema": {"type": "string"}}]}
+    }
+  }
+}

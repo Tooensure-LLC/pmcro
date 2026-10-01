@@ -92,6 +92,12 @@ jobs:
         run: python plugins/pmcro-mcpserver/skills/platform-api-mcp/scripts/generate_platform_mcp.py --spec plugins/pmcro-mcpserver/skills/platform-api-mcp/assets/examples/example-api.json --out "$RUNNER_TEMP/pmcp"
       - name: Build
         run: dotnet build "$RUNNER_TEMP/pmcp" -c Release
+      - name: Convert the example OpenAPI file, generate and build that server too
+        run: |
+          D=plugins/pmcro-mcpserver/skills/platform-api-mcp
+          python $D/scripts/openapi_to_spec.py --openapi $D/assets/examples/example-openapi.json --name Pmcro.Mcp.Shop --platform "Example Shop" --base-url-env SHOP_BASE_URL --token-env SHOP_TOKEN --include-writes --out "$RUNNER_TEMP/shop-spec.json"
+          python $D/scripts/generate_platform_mcp.py --spec "$RUNNER_TEMP/shop-spec.json" --out "$RUNNER_TEMP/shop"
+          dotnet build "$RUNNER_TEMP/shop" -c Release
       - name: Install the Python MCP client
         run: pip install mcp==1.28.1
       - name: Run against the fake API (writes disabled, then enabled)
