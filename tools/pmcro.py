@@ -87,6 +87,16 @@ def check_skill(d, errors):
                         errors.append(f"{p.relative_to(ROOT)}: absolute path")
 
 
+def flat_skills():
+    """Skills with none of references/, scripts/, assets/: prose-only, so a small model must guess the flow."""
+    out = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            if not any((f.parent / sub).is_dir() for sub in ("references", "scripts", "assets")):
+                out.append(f.parent.relative_to(ROOT))
+    return out
+
+
 OUTSIDE = re.compile(r"`(\.\./[^`\s]+)`")
 
 
@@ -292,9 +302,8 @@ def cmd_new_plugin(name, description, skill, skill_description):
         print("refused: skill must be kebab-case and its description 1-1024 characters")
         return 2
     sk = dest / "skills" / skill
-    for sub in ("references", "scripts", "assets"):
+    for sub in ("references", "scripts", "assets/templates"):
         (sk / sub).mkdir(parents=True)
-        (sk / sub / ".gitkeep").write_text("")
     (dest / "plugin.json").write_text(json.dumps({"$schema": SCHEMA, "name": name, "version": "0.1.0",
                                                    "description": description, "skills": ["./skills/"]}, indent=2) + "\n")
     (dest / "README.md").write_text(f"""# {name}
@@ -330,7 +339,9 @@ TODO: explain why this skill exists in two sentences.
 
 ## Do this
 
-1. TODO: the common path, as numbered steps. Keep this file short; move detail to `references/`.
+1. TODO: the common path, as numbered steps. Keep this file short; detail goes in `references/design.md`.
+2. Run `python scripts/run.py` for the exact work; do not redo it in prose.
+3. Fill `assets/templates/output.md.tmpl` for the result, so the shape is the same every time.
 
 ## Never
 
@@ -338,12 +349,26 @@ TODO: explain why this skill exists in two sentences.
 
 ## Output contract
 
-TODO: the exact output to return and how it is verified.
+TODO: the exact output to return and how it is verified. The template is `assets/templates/output.md.tmpl`.
 """)
-    for d in ("references", "scripts", "assets"):
-        (sk / d / ".gitkeep").unlink()
-        if not any((sk / d).iterdir()):
-            (sk / d).rmdir()
+    (sk / "references" / "design.md").write_text(f"# {skill}: design notes\n\nTODO: the detail that does not belong in SKILL.md: why each step exists, edge cases, what is not covered.\n")
+    (sk / "scripts" / "run.py").write_text('''#!/usr/bin/env python3
+"""TODO: say in one sentence what this script does.
+
+TODO: its inputs, its output and its exit codes. The skill's exact work lives here, not in prose.
+"""
+import sys
+
+
+def main(argv):
+    print("TODO: implement")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
+''')
+    (sk / "assets" / "templates" / "output.md.tmpl").write_text("# TODO: result title\n\nTODO: the fixed shape of this skill's output, with {{placeholders}} for what varies.\n")
     cmd_gen(check=False)
     print(f"created {dest.relative_to(ROOT)}; fill the TODOs, then run: python tools/pmcro.py validate")
     return 0
@@ -364,6 +389,8 @@ def cmd_validate():
     check_names(errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
+    for skill in flat_skills():
+        print(f"WARN {skill}: prose-only skill (no references/, scripts/ or assets/); add them so the flow is templated")
     for skill, n in outside_links():
         print(f"WARN {skill}: {n} relative path(s) outside the skill; they will not resolve once the plugin is installed alone")
     for e in errors:

@@ -407,6 +407,24 @@ class NewPluginScaffold(DocsLaw):
         self.assertEqual(self.docs_errors(), [])
         self.assertTrue((self.tmp / "plugins/pmcro-demo/.claude-plugin/plugin.json").is_file())
 
+    def test_scaffold_starts_with_all_three_optional_folders(self):
+        self.assertEqual(self.run_new(), 0)
+        sk = self.tmp / "plugins/pmcro-demo/skills/demo"
+        for f in ("references/design.md", "scripts/run.py", "assets/templates/output.md.tmpl"):
+            self.assertTrue((sk / f).is_file(), f)
+        body = (sk / "SKILL.md").read_text()
+        for f in ("references/design.md", "scripts/run.py", "assets/templates/output.md.tmpl"):
+            self.assertIn(f, body)
+        self.assertNotIn("plugins/pmcro-demo/skills/demo", [str(x) for x in pmcro.flat_skills()])
+
+    def test_prose_only_skill_is_reported(self):
+        self.assertEqual(self.run_new(), 0)
+        import shutil as sh
+        sk = self.tmp / "plugins/pmcro-demo/skills/demo"
+        for sub in ("references", "scripts", "assets"):
+            sh.rmtree(sk / sub)
+        self.assertIn("plugins/pmcro-demo/skills/demo", [str(x) for x in pmcro.flat_skills()])
+
     def test_scaffold_refuses_bad_name_and_reserved_word(self):
         self.assertEqual(self.run_new("Bad_Name"), 2)
         self.assertEqual(self.run_new("claude-demo"), 2)
