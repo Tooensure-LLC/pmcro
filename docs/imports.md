@@ -4,7 +4,7 @@ Status: CANDIDATE. Imported 2026-10-01 with `tools/import_skills.py`; bodies are
 
 | Source | Visibility | Imported | Not imported |
 | --- | --- | --- | --- |
-| ShawnDelaineBellazanLoop/PMCR-O-Marketplace @ a25f7f0 | public | `pmcro-csuite`: ceo, cfo, chief-of-staff, chro, clo, cmo, coo, cro, cto | `pmcro-engine` and `pmcro-specialty` (see below) |
+| the owner's PMCR-O-Marketplace repo @ a25f7f0 | public | `pmcro-csuite`: ceo, cfo, chief-of-staff, chro, clo, cmo, coo, cro, cto | `pmcro-engine` and `pmcro-specialty` (see below) |
 | Tooensure-LLC/ProjectName @ 1a003e9 | **private** | nothing | everything; this repo is public, so copying needs an explicit decision |
 
 ## Changes made on import

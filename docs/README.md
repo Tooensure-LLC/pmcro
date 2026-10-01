@@ -8,6 +8,7 @@ Every file under `docs/` must be linked here (the validator checks).
 | [imports.md](imports.md) | What was imported from older repos, what changed, defects found |
 | [offline-kit.md](offline-kit.md) | Packing the repo for an offline machine (tested) and the unattended runner design (not built) |
 | [dotagents.md](dotagents.md) | The dotagents convention: what was run and verified, consumer config, what is not verified |
+| [product/company-model.md](product/company-model.md) | What the owner's company file says: product, laws, earned constraints, always-ask list, round table, queue, plus corrections to earlier guesses |
 | [product/idea-backlog.md](product/idea-backlog.md) | Every direction the owner has given, with status and next step |
 | [product/foundations.md](product/foundations.md) | The three ideas PMCR-O rests on (strange loops, I and Thou, self-replication) and what each asks of the design |
 | [product/colab-and-cognitive-agents.md](product/colab-and-cognitive-agents.md) | Learning notes: Colab for cheap fine-tuning, the data rules, and what a cognitive agent means here |
@@ -41,5 +42,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0020](decisions/0020-bip-delegated-decisions.md) | BIP: decisions are delegated to the seats; the reserved list; the decision log |
 | [0021](decisions/0021-shared-memory-is-the-founders-knowledge.md) | Shared memory is the founder's knowledge, tiered and human-accepted |
 | [0022](decisions/0022-generate-the-owners-mcp-servers.md) | Generate the owner's MCP servers; the owner wires the connections |
+| [0024](decisions/0024-no-personal-names-in-the-application.md) | The owner's personal name is not in the application |
 
 New decision: copy the last record, increment the number, and add a row above.

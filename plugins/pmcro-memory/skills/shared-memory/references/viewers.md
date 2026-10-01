@@ -18,4 +18,4 @@ Status: company rules (ADR 0021). Search is filtered by the viewer, so one share
 
 ## Candidate and accepted
 
-Agents write `candidate`. The founder may mark `accepted`. This mirrors the company rule that learning is proposed by the Reflector and accepted by a human.
+Agents write `candidate`. The founder may mark `accepted`. This is close to the company's rule RR-001 (the Reflector writes a candidate; it is promoted to an earned constraint only when a check for it is first proven able to fail, or when the same issue recurs in a second trail), but not identical: here acceptance is by the founder, and the recurrence or failing-check test is not enforced by the tool.

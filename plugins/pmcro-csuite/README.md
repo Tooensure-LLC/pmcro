@@ -26,4 +26,4 @@ Install only the seat a bot plays; every installed skill adds to a small model's
 
 ## Status
 
-CANDIDATE. Imported from `ShawnDelaineBellazanLoop/PMCR-O-Marketplace@a25f7f0` with `tools/import_skills.py`. Known defects, none fixed: every seat links to a file outside its plugin (`../../../pmcro-engine/...`), and `ceo` lost one dead link. Full list in `docs/imports.md`. Nine seats here versus 15 Chiefs in the private ProjectName seat bot: reconcile before generating seat bots.
+CANDIDATE. Imported from `the owner's PMCR-O-Marketplace repo @a25f7f0` with `tools/import_skills.py`. Known defects, none fixed: every seat links to a file outside its plugin (`../../../pmcro-engine/...`), and `ceo` lost one dead link. Full list in `docs/imports.md`. Nine seats here versus 15 Chiefs in the private ProjectName seat bot: reconcile before generating seat bots.

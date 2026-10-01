@@ -11,7 +11,7 @@ Source of truth: plugins/<name>/plugin.json and plugins/<name>/skills/*/SKILL.md
 Everything under .claude-plugin/, .cursor-plugin/, .codex-plugin/, .github/plugin/ and
 .agents/plugins/ is generated and disposable.
 """
-import json, pathlib, re, sys
+import hashlib, json, pathlib, re, sys
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -171,6 +171,45 @@ def check_docs(errors):
                 errors.append(f"docs/README.md: does not link {f.relative_to(ROOT / 'docs')}")
 
 
+# The owner's personal name must not appear anywhere in the application (ADR 0024). The forbidden words are stored
+# only as SHA-256 hashes, so this file does not contain the name. Hashes of short words can be guessed; the aim is that
+# the name is not written in the application's text, not that it is secret.
+FORBIDDEN_NAME_HASHES = frozenset({
+    "145a4f7dd456a8f7fc7cc92421e24964e743873f15fa142e01ca886d264a3810",
+    "550bd1be9152443d76b9995b12f6a034de37b25a9a8e31461cb8a10fa7a903e2",
+    "5abd8a7b95a7e6e8726ac33244d9f24f5b78070296d21bf1cd37ef5e2a68d778",
+    "a30a997579a6d8733555003b7cc698864186fb708731dfdcd14c5e0a22a945e9",
+    "aff16ac54a0bf21df79a3520ebb5d26ddfed0f3b2ffbd434a566895e87e8259a",
+})
+SKIP_DIRS = {".git", ".trail-local", "__pycache__", "node_modules", ".venv"}
+
+
+def name_tokens(text):
+    out = set()
+    for token in re.findall(r"[A-Za-z0-9]+", text):
+        low = token.lower()
+        out.add(low)
+        out.update(x.lower() for x in re.findall(r"[A-Za-z]+", token))                      # letter runs: name2024name
+        out.update(x.lower() for x in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", token))   # camelCase humps
+    return out
+
+
+def text_has_forbidden_name(text):
+    return any(hashlib.sha256(t.encode()).hexdigest() in FORBIDDEN_NAME_HASHES for t in name_tokens(text))
+
+
+def check_names(errors):
+    for f in sorted(ROOT.rglob("*")):
+        if not f.is_file() or SKIP_DIRS & set(f.relative_to(ROOT).parts) or f.stat().st_size > 2_000_000:
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if text_has_forbidden_name(text) or text_has_forbidden_name(f.name):
+            errors.append(f"{f.relative_to(ROOT)}: contains a forbidden personal name (ADR 0024)")
+
+
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -322,6 +361,7 @@ def cmd_validate():
                 check_skill(sk, errors)
     check_upstreams(errors)
     check_docs(errors)
+    check_names(errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
     for skill, n in outside_links():

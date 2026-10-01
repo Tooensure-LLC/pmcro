@@ -1076,6 +1076,54 @@ class DotnetServerGenerator(unittest.TestCase):
             self.gen()
 
 
+class NoPersonalNames(Sandbox):
+    """The owner's name must not be in the application. The test builds the name from pieces so it is not itself a hit."""
+    FIRST = "Sha" + "wn"
+    LAST = "Bella" + "zan"
+    HANDLE = FIRST + "Dela" + "ine" + LAST + "Loop"
+
+    def hits(self, text, name="x.md"):
+        (self.tmp / name).write_text(text)
+        errs = []
+        pmcro.check_names(errs)
+        return [e for e in errs if name in e]
+
+    def test_the_repository_is_clean(self):
+        errs = []
+        old = (pmcro.ROOT, pmcro.PLUGINS)
+        pmcro.ROOT, pmcro.PLUGINS = REPO, REPO / "plugins"
+        try:
+            pmcro.check_names(errs)
+        finally:
+            pmcro.ROOT, pmcro.PLUGINS = old
+        self.assertEqual(errs, [])
+
+    def test_plain_first_and_last_name_found(self):
+        self.assertTrue(self.hits(f"written by {self.FIRST}"))
+        self.assertTrue(self.hits(f"{self.LAST.upper()} was here", "y.md"))
+
+    def test_github_handle_and_camel_case_found(self):
+        self.assertTrue(self.hits(f"https://github.com/{self.HANDLE}/repo", "a.md"))
+        self.assertTrue(self.hits(f"imported_from: {self.HANDLE}", "b.md"))
+
+    def test_email_style_and_digits_found(self):
+        self.assertTrue(self.hits(f"{self.FIRST.lower()}2024{self.LAST.lower()}@example.com", "c.md"))
+
+    def test_name_in_a_filename_found(self):
+        (self.tmp / f"{self.FIRST}-notes.md").write_text("harmless")
+        errs = []
+        pmcro.check_names(errs)
+        self.assertTrue(any(self.FIRST in e for e in errs))
+
+    def test_ordinary_words_are_not_flagged(self):
+        self.assertEqual(self.hits("shawl and bell and lazy and delay", "d.md"), [])
+
+    def test_source_does_not_contain_the_plain_name(self):
+        src = (REPO / "tools/pmcro.py").read_text().lower()
+        self.assertNotIn(self.FIRST.lower(), src)
+        self.assertNotIn(self.LAST.lower(), src)
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()

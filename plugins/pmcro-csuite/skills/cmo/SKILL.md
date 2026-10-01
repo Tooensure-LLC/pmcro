@@ -5,7 +5,7 @@ compatibility: MAF skill — loaded by codeact-agent when domain=cmo.
 metadata:
   pattern_d: opt-in
   version: 1.0.0
-  imported_from: ShawnDelaineBellazanLoop/PMCR-O-Marketplace@a25f7f0
+  imported_from: the owner's PMCR-O-Marketplace repo @a25f7f0
 ---
 
 # CMO Domain Skill

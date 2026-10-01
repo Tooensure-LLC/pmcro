@@ -2,6 +2,10 @@
 
 Status: company rules (ADR 0018). Not legal advice. Each platform's automation, AI-label and affiliate rules differ and change; none were fetched here. Before drafting for a platform, open its current policy pages and note the date you checked.
 
+## The company's own rule (EC-0002)
+
+A platform's control (bot detection, a rate limit, terms of service) is a boundary, not an obstacle. On a block, stop and record the policy and a permitted path: the official API, the account owner acting, or a different goal. Never try to look more human to get past a control. See `docs/product/company-model.md`.
+
 ## Always
 
 - One real identity per account: the founder's or the company's, stated plainly.
