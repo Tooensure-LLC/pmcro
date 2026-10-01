@@ -1,5 +1,10 @@
 # Changelog: pmcro-core
 
+## 0.6.0
+
+- `new-skill`: every new skill now also gets an input shape (`assets/templates/input.md.tmpl`) and `scripts/check_input.py`, which accepts a complete request or denies it and returns the shape to fill in. The SKILL.md template gains a Gotchas section (the Agent Skills docs call gotchas the highest-value content), and `new-skill` now says to run `find-skill` and to consult the Agent Skills docs server when connected.
+- Added `find-skill`: keyword search over this repository's skills plus the list of other places to check, so a skill is only created when none fits.
+
 ## 0.5.0
 
 - Added `new-skill`: creates a skill inside an existing plugin in the templated shape; its `assets/templates/` is now the single template for every new skill, and `tools/pmcro.py new-plugin` uses it for a plugin's first skill.

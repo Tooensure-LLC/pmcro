@@ -417,6 +417,13 @@ class NewPluginScaffold(DocsLaw):
             self.assertIn(f, body)
         self.assertNotIn("plugins/pmcro-demo/skills/demo", [str(x) for x in pmcro.flat_skills()])
 
+    def test_long_skill_is_reported_but_not_an_error(self):
+        self.assertEqual(self.run_new(), 0)
+        f = self.tmp / "plugins/pmcro-demo/skills/demo/SKILL.md"
+        f.write_text(f.read_text() + "\nfiller line\n" * 200)
+        self.assertIn("plugins/pmcro-demo/skills/demo", [str(x[0]) for x in pmcro.long_skills()])
+        self.assertEqual(self.errors(), [])
+
     def test_prose_only_skill_is_reported(self):
         self.assertEqual(self.run_new(), 0)
         import shutil as sh
@@ -1244,7 +1251,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
         expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
-                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp", "new-skill"}
+                    "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp", "new-skill", "find-skill"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
         self.assertEqual([r.name for r in tp._resources], ["references/tiers.md"])
@@ -1589,7 +1596,8 @@ class NewSkillScaffold(unittest.TestCase):
         r = self.run_s()
         self.assertEqual(r.returncode, 0, r.stderr)
         sk = self.tmp / "plugins/pmcro-demo/skills/fresh-skill"
-        for f in ("SKILL.md", "references/design.md", "scripts/run.py", "assets/templates/output.md.tmpl"):
+        for f in ("SKILL.md", "references/design.md", "scripts/run.py", "assets/templates/output.md.tmpl",
+                  "assets/templates/input.md.tmpl", "scripts/check_input.py"):
             self.assertTrue((sk / f).is_file(), f)
         self.assertIn("name: fresh-skill", (sk / "SKILL.md").read_text())
         self.assertNotIn("{{", "".join(p.read_text() for p in sk.rglob("*") if p.is_file() and p.name != "output.md.tmpl"))
@@ -1597,6 +1605,22 @@ class NewSkillScaffold(unittest.TestCase):
         self.assertIn("| `fresh-skill` | Use when testing. |", readme)
         self.assertLess(readme.index("`old`"), readme.index("`fresh-skill`"))
         self.assertLess(readme.index("`fresh-skill`"), readme.index("## Install"))
+
+    def test_generated_check_denies_with_the_shape_and_accepts_a_complete_request(self):
+        self.assertEqual(self.run_s().returncode, 0)
+        check = self.tmp / "plugins/pmcro-demo/skills/fresh-skill/scripts/check_input.py"
+        def run(text):
+            return subprocess.run([sys.executable, str(check)], input=text, capture_output=True, text=True)
+        denied = run("GOAL: sell a mower\nDONE MEANS: a listing exists\n")
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("DENY: missing OUT OF BOUNDS", denied.stdout)
+        self.assertIn("GOAL: sell a mower", denied.stdout)
+        self.assertIn("OUT OF BOUNDS: <missing>", denied.stdout)
+        self.assertEqual(run("just a messy sentence").returncode, 2)
+        ok = run("GOAL: a\nDONE MEANS: b\nOUT OF BOUNDS: c\n")
+        self.assertEqual((ok.returncode, ok.stdout.strip()), (0, "ACCEPT"))
+        wrapped = run("GOAL: a\n  continues here\nDONE MEANS: b\nOUT OF BOUNDS: c\n")
+        self.assertEqual(wrapped.returncode, 0)
 
     def test_refusals(self):
         self.assertEqual(self.run_s(plugin="pmcro-nope").returncode, 1)
@@ -1606,3 +1630,33 @@ class NewSkillScaffold(unittest.TestCase):
         again = self.run_s()
         self.assertEqual(again.returncode, 1)
         self.assertIn("already exists", again.stderr)
+
+
+class FindSkill(unittest.TestCase):
+    """find_skill.py: ranks skills by name, description and body; reports no match with exit 1."""
+    SCRIPT = REPO / "plugins/pmcro-core/skills/find-skill/scripts/find_skill.py"
+
+    def run_f(self, *words, plugins=None):
+        return subprocess.run([sys.executable, str(self.SCRIPT), *words, "--plugins-dir", str(plugins or REPO / "plugins")],
+                              capture_output=True, text=True)
+
+    def test_finds_the_inbox_skill_by_name_and_ranks_it_first(self):
+        r = self.run_f("inbox")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("pmcro-core/inbox", r.stdout.splitlines()[0])
+
+    def test_no_match_exits_1(self):
+        r = self.run_f("zzzqqqxxx")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("no match", r.stdout)
+
+    def test_name_outranks_body_mentions(self):
+        with tempfile.TemporaryDirectory() as d:
+            for plugin, name, desc, body in (("p1", "alpha", "does other things", "mentions widget once"),
+                                             ("p2", "widget", "makes widgets", "widget widget")):
+                f = pathlib.Path(d) / plugin / "skills" / name / "SKILL.md"
+                f.parent.mkdir(parents=True)
+                f.write_text(f"---\nname: {name}\ndescription: {desc}\n---\n{body}\n")
+            r = self.run_f("widget", plugins=d)
+            self.assertEqual(r.returncode, 0)
+            self.assertIn("p2/widget", r.stdout.splitlines()[0])

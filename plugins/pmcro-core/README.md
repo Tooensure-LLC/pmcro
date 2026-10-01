@@ -13,6 +13,7 @@ The PMCR-O role skills and the Trail Player. Every seat bot installs this plugin
 | `reflect` | Reflector | Records what a finished cycle revealed. Append-only; changes no verdict or policy. |
 | `create-skill` | Skill authoring | The owner's skill for writing new skills; its bundled validator parses frontmatter leniently (owner's Trail 011 observed it accepts eight kinds of frontmatter that strict YAML rejects), so run `tools/pmcro.py validate` too. |
 | `new-skill` | Skill authoring | A skill that makes skills: lays down a new skill inside an existing plugin in the templated shape (SKILL.md, references, scripts, assets/templates) from one template. |
+| `find-skill` | Skill authoring | Reuse before build: searches this repository's skills by keyword and lists the other places to check before a new skill is made. |
 | `inbox` | (founder aid) | Durable, append-only message queue: capture every message verbatim, claim items safely, triage, close with evidence (`scripts/queue.py`). |
 | `trail-player` | (founder aid) | Interviews the founder and records entries with a disclosure tier; see `skills/trail-player/references/tiers.md`. |
 

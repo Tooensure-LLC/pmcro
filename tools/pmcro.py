@@ -87,6 +87,22 @@ def check_skill(d, errors):
                         errors.append(f"{p.relative_to(ROOT)}: absolute path")
 
 
+SOFT_LINES = 150  # AGENTS.md aims for this so small local models cope; the hard limit (500) is an error elsewhere
+SOFT_TOKENS = 5000  # the Agent Skills spec recommends under 5000 tokens for the body; estimated as characters / 4
+
+
+def long_skills():
+    """Skills whose SKILL.md is over the soft size targets: (path, lines, estimated tokens). Warnings only."""
+    out = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            text = f.read_text()
+            lines, tokens = text.count("\n") + 1, len(text) // 4
+            if lines > SOFT_LINES or tokens > SOFT_TOKENS:
+                out.append((f.parent.relative_to(ROOT), lines, tokens))
+    return out
+
+
 def flat_skills():
     """Skills with none of references/, scripts/, assets/: prose-only, so a small model must guess the flow."""
     out = []
@@ -360,6 +376,8 @@ def cmd_validate():
     check_names(errors)
     if RESERVED.search(MARKETPLACE):
         errors.append("marketplace name is reserved or impersonating")
+    for skill, lines, tokens in long_skills():
+        print(f"WARN {skill}: SKILL.md is {lines} lines (about {tokens} tokens); aim for {SOFT_LINES} lines and {SOFT_TOKENS} tokens, move detail to references/")
     for skill in flat_skills():
         print(f"WARN {skill}: prose-only skill (no references/, scripts/ or assets/); add them so the flow is templated")
     for skill, n in outside_links():

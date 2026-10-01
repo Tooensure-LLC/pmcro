@@ -10,9 +10,9 @@ A skill that makes skills: it lays down the one shape every skill here shares, s
 
 ## Do this
 
-1. Read the owner's `create-skill` for how to capture intent, choose a name and write the description; this skill only does the folders.
+1. Run `find-skill` first (reuse before build). Then read the owner's `create-skill` for how to capture intent, choose a name and write the description, and, if the Agent Skills documentation server is connected, look up the specification and best practices there instead of recalling them. This skill only lays down the folders.
 2. Run `python scripts/scaffold_skill.py --plugin PLUGIN --name SKILL-NAME --description "Use when ..."` from the repo root.
-3. Fill every TODO in the new skill's four files: its SKILL.md, its design notes, its run script and its output template. Delete a folder only if you can say why the skill needs none of it.
+3. Fill every TODO in the new skill's files: its SKILL.md, design notes, run script, output template and input shape (the fields a request must have; the generated check accepts a request or denies it with the shape to fill in). Delete a folder only if you can say why the skill needs none of it.
 4. Add a CHANGELOG entry, bump the plugin version in `plugin.json`, then run `python tools/pmcro.py gen` and `python tools/pmcro.py validate`.
 
 ## Never

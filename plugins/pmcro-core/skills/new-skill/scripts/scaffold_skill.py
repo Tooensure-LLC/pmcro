@@ -2,7 +2,8 @@
 """Create a new skill inside an existing plugin, already in the templated shape (SKILL.md, references/, scripts/, assets/).
 
   python scaffold_skill.py --plugin pmcro-core --name my-skill --description "Use when ..." [--plugins-dir plugins]
-Writes plugins/<plugin>/skills/<name>/ from assets/templates/ (the single source for the shape of every skill here) and adds the
+Writes plugins/<plugin>/skills/<name>/ from assets/templates/ (the single source for the shape of every skill here), including an input
+shape and a check_input.py that accepts a request or denies it with the shape to fill in, and adds the
 skill to the plugin README's Skills table. It does not bump the plugin version: add a CHANGELOG entry and bump plugin.json yourself.
 Refuses: a missing plugin, a name that is not kebab-case, a description over 1024 characters, a skill that already exists.
 Output: "created PATH; ..." or "refused: ..." with exit 1. The text it writes still carries TODO markers to fill before committing.
@@ -12,7 +13,8 @@ import argparse, json, pathlib, re, sys
 TEMPLATES = pathlib.Path(__file__).resolve().parent.parent / "assets" / "templates"
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 FILES = [("SKILL.md.tmpl", "SKILL.md"), ("design.md.tmpl", "references/design.md"), ("run.py.tmpl", "scripts/run.py"),
-         ("output.md.tmpl.tmpl", "assets/templates/output.md.tmpl")]
+         ("output.md.tmpl.tmpl", "assets/templates/output.md.tmpl"), ("input.md.tmpl.tmpl", "assets/templates/input.md.tmpl"),
+         ("check_input.py.tmpl", "scripts/check_input.py")]
 
 
 class Refused(Exception):

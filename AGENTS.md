@@ -22,7 +22,7 @@ CI runs the same commands and makes no model calls.
 
 - Frontmatter keys: only `name`, `description`, `license`, `compatibility`, `metadata` (string map), `allowed-tools`.
 - `name` equals the directory; `description` is 1-1024 characters and says when to use the skill, in the user's words.
-- `SKILL.md` under 500 lines (aim for 150 so local models cope). Detail goes in `references/` (one level deep), exact work in `scripts/`, templates in `assets/`.
+- `SKILL.md` under 500 lines (aim for 150 lines and about 5000 tokens so local models cope and skills stay small; `validate` warns past those targets). Detail goes in `references/` (one level deep), exact work in `scripts/`, templates in `assets/`.
 - No absolute paths, symlinks or credential-shaped text.
 - The role skills `orchestrate`, `plan`, `make`, `check`, `reflect` are byte-identical to the owner's skills drive. Do not edit them here.
 - Marketplace and plugin names must not contain claude, anthropic, grok, copilot, codex or agent-skills.
