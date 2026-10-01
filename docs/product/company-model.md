@@ -29,3 +29,20 @@ Status: READ, NOT DESIGNED. Summarised on 2026-10-01 from `company.json` and `AG
 ## Alignment still to do
 
 Our marketplace is named `pmcro-plugins`; the company's is `tooensure-pmcro-skills`. `pmcro-core` copies the loop skills from the owner's drive while the company repo generates `pmcro:*` skills from `company.json`. The two have not been reconciled.
+
+## Second reading, 2026-10-01 (the uploaded specification PDFs, trails corpus and datasets)
+
+Read in full or near full: Architecture Specification, Declarative Agent Factory, Governed Autonomy (to section 20 of its sections), Lock Thought (about 60%), Orchestration API, Trail Product, Plugin Manager (to section 16), Production Runtime corpus (three overlapping versions, last one read by section list and sections 31-40), Training Data Schema and Final Spec, `trails-design-corpus.md`, enterprise QA phase 1 (first third). Two re-uploads (Lock Thought, Declarative Factory) were byte-identical to the first copies. Five uploaded PDFs were 0 bytes.
+
+What matters, with the company's own status words:
+
+- **Almost all implementation material is PROPOSED.** MAF, the Orchestration API as a gateway, one .NET service per role, gRPC and Protobuf between them, the `ProjectName.Mcp.[Name]` naming convention, the Plugin Manager Agent and its lifecycle, Governed Procedure and Autonomy Grant, Lock Thoughts, and the Declarative Agent Factory are all labeled proposed. The Runtime foundation itself selects none of them. Do not describe any of them as decided.
+- **Grounded (EXISTING):** the five-role order, the six laws, the human-approval boundaries, the independent read-only Checker with PASS, LOOP or HALT, append-only trails, relative paths, and the listing gate (Checker PASS plus Auditor AUDIT-PASS) that applies to Trails only, not to plugins, skills or MCP servers.
+- **The Trails baseline leaves these OPEN:** the trail and frame schema, frame format, sealing, replay and the MATCH/MISMATCH algorithm, ACCEPT semantics, evidence representation beyond real command output, storage, cryptography, and LOOP behavior beyond MaxLoops. So the frame fields in `docs/product/trail.md` are this repo's own proposal, not a company schema. Training eligibility belongs to the CDO and needs a Trail to end in ACCEPT first.
+- **Plugin Manager rules worth keeping:** discover, retrieve, stage, install, activate and authorize are separate steps; a plugin's effective capabilities must be a subset of what it requested and of the project ceiling; QUARANTINE is an operating condition, never a Checker verdict; installation stays human-reserved. The exact manifest format and plugin qualification stay OPEN.
+- **Credentials:** none in chat or Trails; masked sign-in handoff is the established pattern; identity injection, tokens and tenancy stay OPEN. MCP configuration is capability, not authorization. Platform controls are boundaries, not evasion targets.
+- **A proposed 21-item must-fail conformance set** exists (for example the API cannot issue a Checker verdict; MATCH cannot be treated as PASS; a plugin cannot self-approve installation). Several are worth mirroring as tests here when the matching features exist.
+
+Corrections to this repo, from the reading: the Grok candidate dataset's system prompt is not the first-person "I AM" form the Final Spec asks for; the training procedure and eligibility rules are summarized in `training-data-spec.md`; the owner's `create-skill` validator is lenient (Trail 011 found it accepts eight kinds of frontmatter that strict YAML rejects).
+
+Still unread: the second half of Lock Thought, the end of Governed Autonomy, the Plugin Manager tail, the middle of the three Runtime corpus versions, and the rest of the enterprise QA document.
