@@ -30,6 +30,7 @@ So this skill builds and checks the page, records the work, and stops before goi
 Return the page path, the checker output verbatim, the dry-run command and its output, and a list
 of anything unsourced or unverified. End with: "Not deployed. Awaiting human approval."
 
+Read `references/cloudflare-mcp.md` and `assets/cloudflare-mcp-servers.json` when the user wants to inspect an existing Cloudflare site or account (read-only role allow-lists).
 Read `references/affiliate-disclosure.md` (disclosure rules), `references/deploy.md` (verified
 wrangler commands and approvals), `references/trail-frames.md` (frames per step).
 `scripts/check_landing.py` lists its checks in its docstring; `assets/landing-template.html` is the starting page.

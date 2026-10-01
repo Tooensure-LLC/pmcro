@@ -379,6 +379,36 @@ class NewPluginScaffold(DocsLaw):
         self.assertIn("TODO", (self.tmp / "plugins/pmcro-demo/skills/demo/SKILL.md").read_text())
 
 
+class CloudflareMcpConfig(unittest.TestCase):
+    PATH = REPO / "plugins/pmcro-cloudflare/skills/landing-page/assets/cloudflare-mcp-servers.json"
+    CHANGING = re.compile(r"create|delete|start|cancel|kill|write|update|put|deploy|purge|edit|remove", re.I)
+
+    def cfg(self):
+        return json.loads(self.PATH.read_text())
+
+    def test_config_passes_the_mcp_checker(self):
+        self.assertEqual(_load_mcp().check(self.cfg()), [])
+
+    def test_no_allow_list_contains_a_changing_tool(self):
+        for name, s in self.cfg()["servers"].items():
+            for role, r in s["roles"].items():
+                for tool in r["allowed_tools"]:
+                    self.assertIsNone(self.CHANGING.search(tool), f"{name}/{role}: {tool}")
+
+    def test_checker_role_has_no_more_tools_than_maker_where_both_exist(self):
+        for name, s in self.cfg()["servers"].items():
+            if "checker" in s["roles"] and "maker" in s["roles"]:
+                self.assertLessEqual(set(s["roles"]["checker"]["allowed_tools"]), set(s["roles"]["maker"]["allowed_tools"]), name)
+
+    def test_code_mode_server_is_not_configured(self):
+        self.assertNotIn("mcp.cloudflare.com/mcp", json.dumps([s["url"] for s in self.cfg()["servers"].values() if s["url"].split("//")[1].startswith("mcp.")]))
+
+    def test_every_server_uses_https_and_an_env_var_name(self):
+        for name, s in self.cfg()["servers"].items():
+            self.assertTrue(s["url"].startswith("https://"), name)
+            self.assertEqual(s["headers_from_env"], {"Authorization": "CLOUDFLARE_MCP_AUTH"}, name)
+
+
 class UpstreamPins(Sandbox):
     def setUp(self):
         super().setUp()

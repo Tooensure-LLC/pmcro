@@ -1,0 +1,47 @@
+{
+  "servers": {
+    "observability": {
+      "transport": "http",
+      "url": "https://observability.mcp.cloudflare.com/mcp",
+      "headers_from_env": {"Authorization": "CLOUDFLARE_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": ["observability_keys", "observability_values", "query_worker_observability"], "approval": "always_require"},
+        "maker": {"allowed_tools": ["observability_keys", "observability_values", "query_worker_observability"], "approval": "always_require"}
+      }
+    },
+    "builds": {
+      "transport": "http",
+      "url": "https://builds.mcp.cloudflare.com/mcp",
+      "headers_from_env": {"Authorization": "CLOUDFLARE_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": ["workers_builds_list_builds", "workers_builds_get_build", "workers_builds_get_build_logs"], "approval": "always_require"}
+      }
+    },
+    "dns-analytics": {
+      "transport": "http",
+      "url": "https://dns-analytics.mcp.cloudflare.com/mcp",
+      "headers_from_env": {"Authorization": "CLOUDFLARE_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": ["dns_report", "show_account_dns_settings", "show_zone_dns_settings"], "approval": "always_require"}
+      }
+    },
+    "logpush": {
+      "transport": "http",
+      "url": "https://logs.mcp.cloudflare.com/mcp",
+      "headers_from_env": {"Authorization": "CLOUDFLARE_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": ["logpush_jobs_by_account_id"], "approval": "always_require"}
+      }
+    },
+    "browser": {
+      "transport": "http",
+      "url": "https://browser.mcp.cloudflare.com/mcp",
+      "headers_from_env": {"Authorization": "CLOUDFLARE_MCP_AUTH"},
+      "roles": {
+        "checker": {"allowed_tools": ["get_url_markdown", "get_url_html_content", "get_url_links", "get_url_screenshot"], "approval": "always_require"},
+        "maker": {"allowed_tools": ["get_url_markdown", "get_url_html_content", "get_url_links", "get_url_screenshot", "scrape_url_elements"], "approval": "always_require"}
+      }
+    }
+  },
+  "note": "Read tools only. Excluded on purpose: the Code Mode server (mcp.cloudflare.com), every create/delete/start/cancel/kill tool, and the docs server (its tool names were not found in source). CLOUDFLARE_MCP_AUTH must hold the full header value (for example 'Bearer <token>') in the human's environment, never in this file."
+}

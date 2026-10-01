@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "pmcro-cloudflare",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PMCR-O website and landing-page setup on Cloudflare, with affiliate-disclosure checks, trail frames for each step, and deploys gated behind human approval.",
   "skills": ["./skills/"]
 }

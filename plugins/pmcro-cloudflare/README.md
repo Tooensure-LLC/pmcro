@@ -8,6 +8,10 @@ Website and landing-page setup on Cloudflare for the PMCR-O company, built for a
 | --- | --- |
 | `landing-page` | Start from a template, check affiliate-disclosure basics with `scripts/check_landing.py`, record trail frames, and prepare a deploy dry run for a human to approve. |
 
+## Cloudflare MCP servers
+
+Cloudflare publishes remote MCP servers (observability, builds, DNS analytics, Logpush, Browser Run and more). `landing-page` carries a read-only, per-role allow-list for them (`assets/cloudflare-mcp-servers.json`) and notes in `references/cloudflare-mcp.md`. The broad Code Mode server is excluded by default. Nothing here has been connected to a real account.
+
 ## Install
 
 ```
