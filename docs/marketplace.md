@@ -32,7 +32,7 @@ MAF discloses a skill in steps: name and description, then body (`load_skill`), 
 | Item | Why not |
 | --- | --- |
 | LLM evals (does a skill beat the no-skill baseline) | dotnet/skills uses `eval.yaml` graders; ours would need a model. Proposed: a manual `workflow_dispatch` job using a Grok key stored as a repository secret, or a local Ollama model. You add the secret; I never see it. |
-| `dotagents` (`agents.toml`, `agents.lock`) | Schema known only from research; run `dotagents init` where npm works rather than guessing the file. |
+| `dotagents` host loading and MCP/hook projection | install, lock and `doctor` are verified (see `docs/dotagents.md`); a host actually loading the result is not. |
 | Signing and provenance (cosign or Ed25519) | Phase 6 of the plan. |
 | `claude plugin validate`, .NET compile | CLI and SDK not available in this workspace. |
 | Codex marketplace format | Generated copy follows the Claude shape; Codex's own layout is from secondary sources. |
