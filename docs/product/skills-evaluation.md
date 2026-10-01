@@ -25,6 +25,14 @@ Source: the dashboard of the dotnet/skills project (confirmed by the owner 2026-
 4. **Zero model spend.** CI here makes no model calls and the owner has only Grok credits, so a real harness would run on local models (the i9) and a judge from a different family, outside CI. Proposal only, nothing built.
 5. **This is the model strengths table.** The strengths table in `competitors-and-models.md` should be filled from runs like these, with a date, task and model pair, never from impressions.
 
+## The owner's explanation, and a count that tests it
+
+The owner's reading (2026-10-01): dotnet/skills mostly ships a single SKILL.md and does not use the optional `references/`, `scripts/` and `assets/` folders, so a model has to interpret prose and guess the flow; their own design uses all three, with the flow templated (assets hold templates, references hold the detail, scripts do the exact work), so even a less capable model follows the same steps every time. Models from the big labs are very capable; the bet is a smaller model with a fully templated skill can still do the job.
+
+A count taken the same day on a shallow clone of dotnet/skills (commit 973cffb): of 105 skills, 66 have none of the three optional folders, 33 have only `references/`, 3 have references and scripts, 2 only scripts, 1 only assets, and none has all three. So the owner's description is borne out for that repo. Our own 29 skills are not uniformly full either: 9 have all three folders, 7 have references and scripts, 8 only references, 5 none (the role skills and a few small ones).
+
+This is a hypothesis, not a result: the dashboard cannot tell us that structure is why many skills show no clear result, and a skill with a rich structure could still fail on activation. It is exactly what a harness could test: the same task with a prose-only skill and a fully templated one, on the same small model.
+
 ## Reuse before build
 
 dotnet/skills already publishes its validator and per-skill evaluations. Before designing our own harness, read that tooling in full and check whether it can run against our skills, with local models and a different-family judge. Its licence (MIT per the earlier upstream pin) and whether it can run without paid model calls are not yet checked.
