@@ -5,7 +5,8 @@ Usage: python tools/site_contrast.py [css]    prints every pair; exits 1 if any 
 Both colors of every pair are bound to the CSS rule and property that sets them in
 site/templates/pmcro/public/main.css, so changing a color, a token, or the rule that uses it fails CI until
 this list is updated and re-measured. Each pair is measured against every color in its background declaration
-(all gradient stops, named or not), and the worst one decides (ADR 0034).
+(all gradient stops, named or not), and the worst one decides (ADR 0034). #RRGGBB, #RGB, opaque rgb() and hsl()
+are measured; a background color it cannot measure (named colors, transparency) fails the check (ADR 0035).
 """
 import re
 import sys
@@ -90,13 +91,73 @@ def ratio(fg, bg):
     return (hi + 0.05) / (lo + 0.05)
 
 
+# Words that may appear in a background declaration without being colors (gradient syntax and units).
+NON_COLOR_WORDS = {
+    "linear-gradient", "radial-gradient", "conic-gradient", "repeating-linear-gradient",
+    "repeating-radial-gradient", "ellipse", "circle", "at", "to", "from", "in", "left", "right", "top",
+    "bottom", "center", "closest-side", "closest-corner", "farthest-side", "farthest-corner", "deg", "turn",
+    "rad", "grad", "px", "em", "rem", "vw", "vh", "srgb", "oklab", "none", "important",
+}
+
+
+def _hex6(r, g, b):
+    """Format 0-255 channels as #RRGGBB."""
+    return "#{:02X}{:02X}{:02X}".format(*(max(0, min(255, round(c))) for c in (r, g, b)))
+
+
+def _hsl_to_hex(h, s, l):
+    """Convert CSS hsl (degrees, percent, percent) to #RRGGBB with the standard library."""
+    import colorsys
+    r, g, b = colorsys.hls_to_rgb((h % 360) / 360, l / 100, s / 100)
+    return _hex6(r * 255, g * 255, b * 255)
+
+
 def surface_colors(value, tokens):
-    """Every #RRGGBB color in a resolved background declaration (all stops of a gradient), in order, without repeats."""
-    seen = []
-    for c in re.findall(r"#[0-9A-Fa-f]{6}\b", resolve(value, tokens)):
-        if c.upper() not in seen:
-            seen.append(c.upper())
-    return seen
+    """Return (colors, unmeasurable) for a resolved background declaration (all stops of a gradient).
+
+    colors: every color found, normalised to #RRGGBB, without repeats. #RRGGBB, #RGB, opaque rgb()/rgba() and
+    hsl()/hsla() are measured. unmeasurable: anything color-like that cannot be measured as an opaque sRGB
+    color (named colors, alpha below 1, #RGBA/#RRGGBBAA, other functions). The check fails closed on those
+    instead of skipping them (ADR 0035).
+    """
+    text = resolve(value, tokens)
+    colors, bad = [], []
+
+    def add(c):
+        if c not in colors:
+            colors.append(c)
+
+    def alpha_ok(a):
+        a = a.strip()
+        return float(a[:-1]) / 100 >= 1 if a.endswith("%") else float(a) >= 1
+
+    for m in re.finditer(r"(rgba?|hsla?)\(([^)]*)\)", text, re.IGNORECASE):
+        fn, parts = m.group(1).lower(), [p for p in re.split(r"[\s,/]+", m.group(2).strip()) if p]
+        try:
+            if len(parts) == 4 and not alpha_ok(parts[3]):
+                bad.append(m.group(0))
+            elif fn.startswith("rgb"):
+                ch = [float(p[:-1]) * 2.55 if p.endswith("%") else float(p) for p in parts[:3]]
+                add(_hex6(*ch))
+            else:
+                add(_hsl_to_hex(float(parts[0].rstrip("deg")), float(parts[1].rstrip("%")), float(parts[2].rstrip("%"))))
+        except (ValueError, IndexError):
+            bad.append(m.group(0))
+    text = re.sub(r"(rgba?|hsla?)\([^)]*\)", " ", text, flags=re.IGNORECASE)
+    for m in re.finditer(r"#([0-9A-Fa-f]+)\b", text):
+        h = m.group(1)
+        if len(h) == 6:
+            add("#" + h.upper())
+        elif len(h) == 3:
+            add("#" + "".join(c * 2 for c in h).upper())
+        else:
+            bad.append(m.group(0))
+    text = re.sub(r"#[0-9A-Fa-f]+\b", " ", text)
+    text = re.sub(r"var\([^)]*\)", lambda m: bad.append(m.group(0)) or " ", text)
+    for word in re.findall(r"[A-Za-z][A-Za-z-]*", text):
+        if word.lower() not in NON_COLOR_WORDS:
+            bad.append(word)
+    return colors, bad
 
 
 def main(argv):
@@ -114,7 +175,10 @@ def main(argv):
         # Judge the foreground against every color the background really contains (ADR 0034): a gradient is
         # only as readable as its worst stop, including stops this list does not name.
         declared_bg = rules.get(bg_sel, {}).get(bg_prop) or bg
-        stops = surface_colors(declared_bg, tokens) or [bg.upper()]
+        stops, unmeasurable = surface_colors(declared_bg, tokens)
+        stops = stops or [bg.upper()]
+        if unmeasurable:
+            notes.append(f"UNMEASURABLE in {bg_sel} {{ {bg_prop} }}: {', '.join(unmeasurable)}")
         worst_stop = min(stops, key=lambda s: ratio(fg, s))
         r = ratio(fg, worst_stop)
         ok = r >= need and not notes

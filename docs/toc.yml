@@ -85,3 +85,5 @@
     href: decisions/0033-docs-site-wcag-contrast.md
   - name: "0034 · The contrast check measures every background stop, not only the listed one"
     href: decisions/0034-contrast-check-every-background-stop.md
+  - name: "0035 · The contrast check measures every CSS color notation it can and fails closed on the rest"
+    href: decisions/0035-contrast-check-fails-closed.md
