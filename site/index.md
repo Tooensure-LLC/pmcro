@@ -9,7 +9,7 @@ title: Fund The Loop
   <img class="pm-art" src="images/hero.svg" alt="The PMCR-O loop: Orchestrator, Planner, Maker, Checker and Reflector placed on an infinity loop, with funding flowing in from both sides">
   <div class="pm-cta">
     <a class="pm-btn pm-btn-primary" href="plugins.md">Browse the plugins</a>
-    <a class="pm-btn pm-btn-ghost" href="docs/product/trail.md">How the Trail works</a>
+    <a class="pm-btn pm-btn-ghost" href="../docs/product/trail.md">How the Trail works</a>
   </div>
   <div class="pm-install">/plugin marketplace add Tooensure-LLC/pmcro
 /plugin install pmcro-core@pmcro-plugins</div>
@@ -27,7 +27,7 @@ title: Fund The Loop
 
 ## Why "Fund The Loop"
 
-Every cycle leaves a Trail frame: what was decided, done, checked and learned, and what it cost. A loop that records its cost can be judged on its economics, and a loop that keeps passing independent checks is worth funding. See [Trail](docs/product/trail.md) and [Foundations](docs/product/foundations.md).
+Every cycle leaves a Trail frame: what was decided, done, checked and learned, and what it cost. A loop that records its cost can be judged on its economics, and a loop that keeps passing independent checks is worth funding. See [Trail](../docs/product/trail.md) and [Foundations](../docs/product/foundations.md).
 
 ## Install
 
@@ -39,6 +39,6 @@ Works in Claude Code and Copilot CLI:
 /plugin install pmcro-dotnet@pmcro-plugins
 ```
 
-The full list is in the [plugin catalog](plugins.md). How the marketplace is built and checked is in [Marketplace](docs/marketplace.md).
+The full list is in the [plugin catalog](plugins.md). How the marketplace is built and checked is in [Marketplace](../docs/marketplace.md).
 
-<p class="pm-note">Status: CANDIDATE. CI in the repo is deterministic and makes no model calls; each plugin's README says what was and was not tested. This site is built and checked in CI and is not deployed (<a href="docs/decisions/0031-docs-site-docfx-build-only.md">ADR 0031</a>).</p>
+<p class="pm-note">Status: CANDIDATE. CI in the repo is deterministic and makes no model calls; each plugin's README says what was and was not tested. This site is built and checked in CI and is not deployed (<a href="../docs/decisions/0031-docs-site-docfx-build-only.md">ADR 0031</a>).</p>
