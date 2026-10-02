@@ -3,7 +3,7 @@
   "build": {
     "content": [
       {
-        "files": [ "index.md", "plugins.md", "docs.md", "toc.yml" ]
+        "files": [ "index.md", "plugins.md", "toc.yml", "docs/index.md", "docs/toc.yml" ]
       },
       {
         "src": "../docs",
@@ -26,17 +26,35 @@
     ],
     "output": "_site",
     "template": [ "default", "modern", "templates/pmcro" ],
+    "postProcessors": [ "ExtractSearchIndex" ],
     "globalMetadata": {
+      "_lang": "en",
       "_appName": "PMCR-O",
       "_appTitle": "PMCR-O",
-      "_appFooter": "PMCR-O · Fund The Loop · Status: CANDIDATE",
+      "_description": "PMCR-O: a five-role loop for AI agents (Orchestrator, Planner, Maker, Checker, Reflector), shipped as Agent Skills plugins. Fund The Loop.",
+      "_appFooter": "PMCR-O · Fund The Loop · Status: CANDIDATE · Built with <a href=\"https://dotnet.github.io/docfx\">docfx</a>",
       "_appLogoPath": "images/logo.svg",
       "_appFaviconPath": "images/favicon.svg",
       "_enableSearch": true,
-      "_disableContribution": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/Tooensure-LLC/pmcro",
+        "branch": "main"
+      },
       "_disableBreadcrumb": false,
       "pdf": false
     },
-    "disableGitFeatures": true
+    "fileMetadata": {
+      "_disableContribution": {
+        "plugins.md": true,
+        "docs/toc.yml": true
+      },
+      "_description": {
+        "plugins.md": "Every plugin in the pmcro-plugins marketplace, with install commands.",
+        "docs/index.md": "PMCR-O documentation: guides, product pages and decision records.",
+        "docs/decisions/*.md": "A numbered PMCR-O architecture decision record: context, decision and consequences.",
+        "docs/product/*.md": "A PMCR-O product page."
+      }
+    }
   }
 }

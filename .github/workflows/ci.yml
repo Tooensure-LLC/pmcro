@@ -144,7 +144,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - name: Plugin catalog page equals what tools/site_catalog.py generates
+      - name: Plugin catalog and docs sidebar equal what tools/site_catalog.py generates
         run: python tools/site_catalog.py gen --check
       - name: Restore pinned docfx
         run: dotnet tool restore
@@ -152,6 +152,12 @@ jobs:
         run: dotnet docfx site/docfx.json --warningsAsErrors
       - name: Every page and asset the landing page needs was produced
         run: |
-          for f in index.html plugins.html docs.html docs/product/trail.html docs/decisions/0031-docs-site-docfx-build-only.html images/hero.svg images/logo.svg images/favicon.svg public/main.css public/main.js; do
+          for f in index.html plugins.html docs/index.html docs/toc.json docs/marketplace.html docs/product/trail.html docs/decisions/0031-docs-site-docfx-build-only.html images/hero.svg images/logo.svg images/favicon.svg public/main.css public/main.js; do
             test -s "site/_site/$f" || { echo "missing site/_site/$f"; exit 1; }
           done
+      - name: Docs pages carry the sidebar, an edit link and a description
+        run: |
+          grep -q 'data-bs-toc\|toc.json' site/_site/docs/marketplace.html || { echo "no sidebar toc on docs/marketplace.html"; exit 1; }
+          grep -q 'github.com/Tooensure-LLC/pmcro/blob/main/docs/marketplace.md' site/_site/docs/marketplace.html || { echo "no edit link on docs/marketplace.html"; exit 1; }
+          grep -q '<meta name="description"' site/_site/docs/decisions/0032-docs-site-configuration-upgrade.html || { echo "no description meta on ADR 0032"; exit 1; }
+          if grep -q 'Tooensure-LLC/pmcro/blob/main/site/plugins.md' site/_site/plugins.html; then echo "generated plugins page must not offer an edit link"; exit 1; fi

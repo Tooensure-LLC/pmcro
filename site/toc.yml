@@ -3,6 +3,7 @@
 - name: Plugins
   href: plugins.md
 - name: Docs
-  href: docs.md
+  href: docs/toc.yml
+  topicHref: docs/index.md
 - name: Trail
   href: ../docs/product/trail.md
