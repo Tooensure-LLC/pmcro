@@ -22,6 +22,8 @@ jobs:
         run: pip install pyyaml==6.0.2 agent-framework==1.19.0 mcp==1.28.1
       - name: Validate plugins, skills and generated adapters
         run: python tools/pmcro.py validate
+      - name: Seat agents equal what tools/seats.py generates
+        run: python tools/seats.py gen --check
       - name: Run tests (validator must-fail cases, MAF progressive disclosure, trail guards)
         run: python -m unittest discover -s tests -v
       - name: Confirm MAF can reach every skill

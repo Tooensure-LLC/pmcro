@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-seats",
+  "version": "0.1.0",
+  "description": "Talk to the PMCR-O C-Suite: one read-only agent per company seat (15, generated from company.json), plus skills to ask one seat or convene a round table.",
+  "skills": [
+    "./skills/"
+  ]
+}

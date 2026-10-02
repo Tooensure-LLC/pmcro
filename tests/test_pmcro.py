@@ -1267,7 +1267,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "round-table", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp", "new-skill", "find-skill"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
@@ -1758,3 +1758,83 @@ class FindSkill(unittest.TestCase):
             r = self.run_f("widget", plugins=d)
             self.assertEqual(r.returncode, 0)
             self.assertIn("p2/widget", r.stdout.splitlines()[0])
+
+
+SEATS_TOOL = REPO / "tools/seats.py"
+SEATS_RUN = REPO / "plugins/pmcro-seats/skills/round-table/scripts/run.py"
+ROSTER = {"chief-of-staff", "ceo", "cto", "cto-checker", "cpo", "cdo", "ciso", "coo", "cfo", "clo",
+          "chief-agent-officer", "cro", "cmo", "cco", "auditor"}
+
+
+class SeatAgents(unittest.TestCase):
+    """The 15 seat agents are generated from the company snapshot, read-only, and refuse what the company refuses."""
+
+    def run_seats(self, *a):
+        return subprocess.run([sys.executable, str(SEATS_RUN), *a], capture_output=True, text=True)
+
+    def test_snapshot_holds_the_15_seat_roster_with_a_pinned_commit(self):
+        snap = json.loads((REPO / "plugins/pmcro-seats/skills/round-table/assets/seats.json").read_text())
+        self.assertEqual({s["id"] for s in snap["seats"]}, ROSTER)
+        self.assertRegex(snap["source"]["sha"], r"^[0-9a-f]{40}$")
+        existing = {s["id"] for s in snap["seats"] if s["status"] == "EXISTING"}
+        self.assertEqual(existing, {"chief-of-staff", "cto", "cto-checker"})
+
+    def test_agents_equal_generator_output(self):
+        r = subprocess.run([sys.executable, str(SEATS_TOOL), "gen", "--check"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual({p.stem for p in (REPO / "plugins/pmcro-seats/agents").glob("*.md")}, ROSTER)
+
+    def test_hand_edit_of_an_agent_is_detected(self):
+        f = REPO / "plugins/pmcro-seats/agents/cfo.md"
+        original = f.read_text()
+        try:
+            f.write_text(original.replace("I advise only", "I decide"))
+            r = subprocess.run([sys.executable, str(SEATS_TOOL), "gen", "--check"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("agents/cfo.md", r.stdout)
+        finally:
+            f.write_text(original)
+
+    def test_every_agent_is_read_only(self):
+        for f in (REPO / "plugins/pmcro-seats/agents").glob("*.md"):
+            tools = re.search(r"^tools:\s*(.+)$", f.read_text(), re.M).group(1)
+            self.assertEqual({t.strip() for t in tools.split(",")}, {"Read", "Grep", "Glob"}, f.name)
+
+    def test_founder_personal_name_absent(self):
+        for f in [*(REPO / "plugins/pmcro-seats").rglob("*.md"), *(REPO / "plugins/pmcro-seats").rglob("*.json")]:
+            self.assertNotIn("Sh" + "awn", f.read_text(), f.name)
+
+    def test_executive_table_is_chaired_and_ordered(self):
+        r = self.run_seats("--table", "executive")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = [l for l in r.stdout.splitlines() if l[:1].isdigit()]
+        self.assertTrue(lines[0].startswith("1. pmcro-seats:chief-of-staff (chair)"))
+        self.assertEqual(len(lines), 6)
+        self.assertIn("Needs the founder", r.stdout)
+
+    def test_ad_hoc_table_adds_chair_and_refuses_more_than_six(self):
+        r = self.run_seats("--seats", "cfo,cto")
+        self.assertEqual([l.split()[1] for l in r.stdout.splitlines() if l[:1].isdigit()],
+                         ["pmcro-seats:chief-of-staff", "pmcro-seats:cfo", "pmcro-seats:cto"])
+        r = self.run_seats("--seats", "cfo,cto,cmo,cro,cco,cpo")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("at most 6", r.stderr)
+
+    def test_unknown_seat_refused(self):
+        for args in (["--seat", "chro"], ["--seats", "cfo,chro"], ["--table", "board"]):
+            r = self.run_seats(*args)
+            self.assertNotEqual(r.returncode, 0, args)
+            self.assertIn("refused", r.stderr)
+
+    def test_import_refuses_a_roster_it_does_not_know(self):
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        try:
+            c = {"bots": [{"id": "chro", "title": "CHRO", "group": "x", "reports_to": "CEO", "owns": "people", "does_not_own": "x"}],
+                 "laws": [], "earned_constraints": [], ("always_ask_" + "sh" + "awn"): [], "round_tables": []}
+            (tmp / "company.json").write_text(json.dumps(c))
+            r = subprocess.run([sys.executable, str(SEATS_TOOL), "import", str(tmp / "company.json"), "--sha", "a" * 40],
+                               capture_output=True, text=True)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("no recorded phase", r.stderr)
+        finally:
+            shutil.rmtree(tmp)
