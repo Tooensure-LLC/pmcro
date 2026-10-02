@@ -9,7 +9,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [offline-kit.md](offline-kit.md) | Packing the repo for an offline machine (tested) and the unattended runner design (not built) |
 | [dotagents.md](dotagents.md) | The dotagents convention: what was run and verified, consumer config, what is not verified |
 | [product/company-model.md](product/company-model.md) | What the owner's company file says: product, laws, earned constraints, always-ask list, round table, queue, plus corrections to earlier guesses |
-| [product/idea-backlog.md](product/idea-backlog.md) | Every direction the owner has given, with status and next step |
 | [Backlog triage 2026-10-01](product/backlog-triage-2026-10-01.md) | The seats' recommendations for every backlog row: next seeds in priority order, founder questions, merges |
 | [product/foundations.md](product/foundations.md) | The three ideas PMCR-O rests on (strange loops, I and Thou, self-replication) and what each asks of the design |
 | [product/colab-and-cognitive-agents.md](product/colab-and-cognitive-agents.md) | Learning notes: Colab for cheap fine-tuning, the data rules, and what a cognitive agent means here |

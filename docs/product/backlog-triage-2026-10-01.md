@@ -4,7 +4,7 @@ Status: recommendations, not decisions. Produced autonomously by the seat agents
 
 ## How it ran
 
-1. The Chief of Staff routed all 75 rows of `idea-backlog.md` to one owning seat each.
+1. The Chief of Staff routed all 75 rows of the idea backlog (since moved to the owner's private queue) to one owning seat each.
 2. Each owning seat reviewed its own rows: done, next, later, merge, founder, or not mine.
 3. The five rows marked not mine went to the seat named; each settled there.
 4. The CEO ordered the "next" seeds by priority across seats.
