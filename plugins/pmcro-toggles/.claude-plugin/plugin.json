@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-toggles",
+  "version": "0.1.0",
+  "description": "Feature-toggle governance for PMCR-O: every flag in an OpenFeature flags.json has an owner, an expiry and a removal plan, and a read-only check finds expired, orphaned and mistyped flags.",
+  "skills": [
+    "./skills/"
+  ]
+}

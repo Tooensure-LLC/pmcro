@@ -27,7 +27,7 @@
     {
       "name": "pmcro-csuite",
       "source": "./plugins/pmcro-csuite",
-      "description": "PMCR-O C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff), imported from the PMCR-O-Marketplace colony repo."
+      "description": "DEPRECATED: use pmcro-seats, which follows the company roster. Imported C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff) kept for reference until the owner decides to remove them."
     },
     {
       "name": "pmcro-dotnet",
@@ -58,6 +58,11 @@
       "name": "pmcro-social",
       "source": "./plugins/pmcro-social",
       "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts."
+    },
+    {
+      "name": "pmcro-toggles",
+      "source": "./plugins/pmcro-toggles",
+      "description": "Feature-toggle governance for PMCR-O: every flag in an OpenFeature flags.json has an owner, an expiry and a removal plan, and a read-only check finds expired, orphaned and mistyped flags."
     },
     {
       "name": "pmcro-training",

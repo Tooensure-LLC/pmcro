@@ -51,5 +51,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0026](decisions/0026-platform-apis-become-mcp-tools-not-agents.md) | Platform APIs become generated MCP tools, not agents; writes off by default |
 | [0027](decisions/0027-company-tier-needs-declared-private-repo.md) | Company tier needs a repo declared private; tier entries scanned and numbered per tier |
 | [0028](decisions/0028-seat-agents-generated-from-company-json.md) | Seat agents generated from company.json, read-only, one per seat |
+| [0029](decisions/0029-memory-ids-csuite-deprecation-seat-drift-toggles.md) | Per-tier memory ids, pmcro-csuite deprecated, seat drift check, toggle governance |
 
 New decision: copy the last record, increment the number, and add a row above.

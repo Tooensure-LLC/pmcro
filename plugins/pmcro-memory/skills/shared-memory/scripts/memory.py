@@ -11,7 +11,8 @@ roundtable and private -> .trail-local/ (must be gitignored). Entries are never 
 entry with --supersedes, and superseded entries are hidden unless --all.
 Who sees what (--viewer): founder sees every tier; seat:ID sees public, company and roundtable entries that
 list that seat; company sees public and company; public sees public only. The default viewer is public.
-Rules: credential-shaped text is refused; the company tier is written only when the repo is declared private
+Ids: one letter and counter per tier (public P, company M, roundtable R, private V), so ids never collide and
+no tier's numbering reveals another. Rules: credential-shaped text and absolute paths (EC-0001) are refused; the company tier is written only when the repo is declared private
 (git config pmcro.repoVisibility private); roundtable entries must name --seats; only --source founder may set
 --status accepted (agents write candidate; acceptance of a lesson is human-owned). Search ranks title, tag and
 body matches with a simple inverse-frequency weight; it is keyword search, not meaning search.
@@ -22,6 +23,12 @@ import argparse, datetime, math, os, pathlib, re, subprocess, sys
 TIERS = {"public": "trail/public", "company": "trail/company",
          "roundtable": ".trail-local/roundtable", "private": ".trail-local/private"}
 LOCAL_ONLY = {"roundtable", "private"}
+# Each tier has its own id letter and its own counter, so ids never collide and a gap in one tier never reveals
+# entries in another. Company keeps M so existing ids (M0001...) stay valid.
+PREFIX = {"public": "P", "company": "M", "roundtable": "R", "private": "V"}
+ID_RE = re.compile(r"^[PMRV]\d{4}$")
+ABS_PATH = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\\\\[A-Za-z0-9._$-]+\\"
+                      r"|(?<![A-Za-z0-9._~/-])/(?:home|root|mnt|tmp|usr|etc|var|opt|srv|dev|run|data|media|private|Users|Volumes)/")
 SECRET = re.compile(r"sk-[A-Za-z0-9]{20,}|xai-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|Bearer\s+\S{12,}|password\s*[:=]|api[_-]?key\s*[:=]|secret\s*[:=]|token\s*[:=]|-----BEGIN [A-Z ]*PRIVATE KEY", re.I)
 WORD = re.compile(r"[a-z0-9]+")
 
@@ -86,7 +93,7 @@ def load_all(viewer, include_superseded=False):
             continue
         if tier in LOCAL_ONLY:
             mem_dir(tier)  # gitignore guard
-        for f in sorted(d.glob("M[0-9][0-9][0-9][0-9].md")):
+        for f in sorted(d.glob(PREFIX[tier] + "[0-9][0-9][0-9][0-9].md")):
             m = parse(f)
             if visible(m, viewer):
                 entries.append(m)
@@ -98,14 +105,20 @@ def load_all(viewer, include_superseded=False):
     return entries
 
 
-def next_id():
+def next_id(d, tier):
+    """Next number inside one tier folder only; never reads another tier."""
     n = 0
-    for tier in TIERS:
-        d = root() / TIERS[tier] / "memory"
-        if d.is_dir():
-            for f in d.glob("M[0-9][0-9][0-9][0-9].md"):
-                n = max(n, int(f.stem[1:]))
+    for f in d.glob(PREFIX[tier] + "[0-9][0-9][0-9][0-9].md"):
+        n = max(n, int(f.stem[1:]))
     return n + 1
+
+
+def prove_path_scan():
+    """EC-0001: the absolute-path check must catch built samples and pass a relative path before it is trusted."""
+    bs = "\\"
+    bad = ("C:" + bs + "Users" + bs + "x", "/" + "home/x/y", bs + bs + "srv" + bs + "share")
+    if not all(ABS_PATH.search(b) for b in bad) or ABS_PATH.search("see trail/public/memory/P0001.md"):
+        sys.exit("refused: the absolute-path check is broken (it missed a known-bad sample or flagged a clean one)")
 
 
 def add(a):
@@ -114,6 +127,9 @@ def add(a):
         sys.exit("refused: title and text are required")
     if SECRET.search(a.title + text):
         sys.exit("refused: credential-shaped text; memory never stores credentials")
+    prove_path_scan()
+    if ABS_PATH.search(a.title + "\n" + text):
+        sys.exit("refused: absolute path (EC-0001); write a path relative to the repository")
     if a.tier == "roundtable" and not a.seats:
         sys.exit("refused: roundtable memory must name --seats")
     if a.status == "accepted" and a.source != "founder":
@@ -123,9 +139,9 @@ def add(a):
         if not old:
             sys.exit(f"refused: no memory {a.supersedes} to supersede")
     d = mem_dir(a.tier, create=True)
-    n = next_id()
+    n = next_id(d, a.tier)
     while True:
-        i = f"M{n:04d}"
+        i = f"{PREFIX[a.tier]}{n:04d}"
         try:
             fd = os.open(d / f"{i}.md", os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             break

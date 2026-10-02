@@ -5,6 +5,8 @@
                                                         company.json into the round-table skill's assets/seats.json
   python tools/seats.py gen                             write plugins/pmcro-seats/agents/<seat>.md from that snapshot
   python tools/seats.py gen --check                     exit 1 if any agent file differs from what gen would write
+  python tools/seats.py drift COMPANY_JSON              exit 1 if the snapshot no longer matches that company.json
+                                                        (seats, laws, constraints, founder-first list, round tables)
 The company repo's company.json is the source of truth; the snapshot records the commit it came from. The founder's
 personal name is replaced with "the founder" on import (ADR 0024). Phases come from the Company Foundation baseline
 (Phase 1 EXISTING, Phases 2 to 4 PROPOSED) because company.json does not carry them. Every agent is read-only
@@ -32,9 +34,7 @@ def scrub(text):
     return re.sub(rf"\b{NAME}'s\b", "the founder's", re.sub(rf"\b{NAME}\b", "the founder", text))
 
 
-def cmd_import(company_json, sha):
-    if not SHA40.match(sha):
-        sys.exit("refused: --sha must be the full 40-character commit of the company repo")
+def build_snapshot(company_json, sha):
     c = json.loads(pathlib.Path(company_json).read_text())
     seats = []
     for b in c["bots"]:
@@ -51,6 +51,13 @@ def cmd_import(company_json, sha):
             "always_ask_founder": [scrub(x) for x in c[ASK_KEY]],
             "round_tables": [{"id": t["id"], "name": t["name"], "chair": t["chair"], "members": t["members"]}
                              for t in c["round_tables"]]}
+    return snap
+
+
+def cmd_import(company_json, sha):
+    if not SHA40.match(sha):
+        sys.exit("refused: --sha must be the full 40-character commit of the company repo")
+    snap = build_snapshot(company_json, sha)
     text = json.dumps(snap, indent=2) + "\n"
     if NAME in text:
         sys.exit("refused: the founder's personal name is still in the snapshot")
@@ -67,6 +74,7 @@ def render(seat, snap):
     laws = "\n".join(f"{i}. {l['name']}: {l['text']}" for i, l in enumerate(snap["laws"], 1))
     ecs = "\n".join(f"- {e['id']}: {e['text']}" for e in snap["earned_constraints"])
     ask = "; ".join(snap["always_ask_founder"])
+    roster = "\n".join(f"- {o['id']} ({o['title']}, {o['status']}): {o['owns']}" for o in snap["seats"])
     return f"""---
 name: {seat['id']}
 description: "{desc}"
@@ -93,6 +101,12 @@ I am the {seat['title']} of the PMCR-O Agent Company.
 - I never read `.trail-local/private/`. In `.trail-local/roundtable/` I read only entries whose seats list names me. I never repeat a round-table entry to anyone it does not name.
 - No credentials in anything I write.
 
+## Company roster
+
+I use this to name the seat that owns a question, including seats that are not in the conversation.
+
+{roster}
+
 ## Laws
 
 {laws}
@@ -105,6 +119,17 @@ I am the {seat['title']} of the PMCR-O Agent Company.
 
 {ask}.
 """
+
+
+def cmd_drift(company_json):
+    """Compare everything but the source commit; report each differing part by name."""
+    have = json.loads(SNAPSHOT.read_text())
+    want = build_snapshot(company_json, have["source"]["sha"])
+    diff = [k for k in want if k != "source" and want[k] != have.get(k)]
+    for k in diff:
+        print(f"drift: {k} differs from company.json; re-run import with the company repo's current commit")
+    print(f"drift check: {len(diff)} part(s) differ")
+    return 1 if diff else 0
 
 
 def cmd_gen(check):
@@ -130,7 +155,10 @@ def main(argv):
     sub = a.add_subparsers(dest="cmd", required=True)
     i = sub.add_parser("import"); i.add_argument("company_json"); i.add_argument("--sha", required=True)
     g = sub.add_parser("gen"); g.add_argument("--check", action="store_true")
+    d = sub.add_parser("drift"); d.add_argument("company_json")
     a = a.parse_args(argv)
+    if a.cmd == "drift":
+        return cmd_drift(a.company_json)
     if a.cmd == "import":
         cmd_import(a.company_json, a.sha)
         return 0

@@ -15,7 +15,7 @@ It is plain files, so it works offline, survives any one model, and a human can 
 1. **Recall before acting.** Before you plan or answer from assumptions, run `python <skill-dir>/scripts/memory.py search "<words>" --viewer <viewer>`. Use your own viewer (see below). Read the top hits with `show`. If memory contradicts what the user just said, the user wins; record a correction.
 2. **Remember what the founder tells you.** When the founder shares knowledge, run `memory.py add --tier <tier> --title "<short title>" --text "<their words>" --tags a,b --source founder`. Use their wording; add tags people would search for. Pick the tier like trail-player (`private` when unsure).
 3. **Record lessons as candidates.** After a cycle, an agent may add `--source agent` (status `candidate` is automatic). A candidate is a suggestion, not knowledge. Only the founder marks a memory `accepted`.
-4. **Correct, never edit.** If a fact changed, add a new entry with `--supersedes M0003`. The old one stays on record and is hidden from normal search.
+4. **Correct, never edit.** If a fact changed, add a new entry with `--supersedes P0003` (ids carry their tier's letter: public P, company M, roundtable R, private V). The old one stays on record and is hidden from normal search.
 5. **Respect who may see it.** Read `references/viewers.md` before searching on someone else's behalf.
 
 ## Never

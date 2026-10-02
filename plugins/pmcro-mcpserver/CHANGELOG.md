@@ -1,5 +1,9 @@
 # Changelog: pmcro-mcpserver
 
+## 0.3.1
+
+- `memory_show` accepts the per-tier memory ids (P, M, R, V followed by four digits) from pmcro-memory 0.3.0.
+
 ## 0.3.0
 
 - `platform-api-mcp`: `openapi_to_spec.py` converts an OpenAPI 3 document into a generator spec (read-only by default, writes marked, 30-operation limit with `--tag`); CI builds a server from the example OpenAPI file.

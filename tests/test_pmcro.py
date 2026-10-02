@@ -862,18 +862,42 @@ class SharedMemory(unittest.TestCase):
 
     def test_show_refuses_an_entry_the_viewer_may_not_see(self):
         self.add("secret", "x", tier="private")
-        r = self.m("show", "M0001", "--viewer", "company")
+        r = self.m("show", "V0001", "--viewer", "company")
         self.assertNotEqual(r.returncode, 0)
 
     def test_supersede_hides_old_and_keeps_it_on_disk(self):
         self.add("Old", "wrong fact")
-        self.add("New", "right fact", supersedes="M0001")
+        self.add("New", "right fact", supersedes="P0001")
         self.assertNotIn("Old", self.m("list").stdout)
         self.assertIn("Old", self.m("list", "--all").stdout)
-        self.assertTrue((self.repo / "trail/public/memory/M0001.md").is_file())
+        self.assertTrue((self.repo / "trail/public/memory/P0001.md").is_file())
+
+    def test_each_tier_numbers_on_its_own_with_its_own_letter(self):
+        for _ in range(3):
+            self.add("p", "private thing", tier="private")
+        self.add("pub", "public thing")
+        self.assertEqual(sorted(f.name for f in (self.repo / "trail/public/memory").glob("*.md")), ["P0001.md"])
+        self.assertEqual(sorted(f.name for f in (self.repo / ".trail-local/private/memory").glob("*.md")),
+                         ["V0001.md", "V0002.md", "V0003.md"])
+
+    def test_absolute_path_refused(self):
+        for text in ("see C:" + "\\" + "Users" + "\\" + "x", "see /" + "home/x/notes"):
+            r = self.add("t", text)
+            self.assertNotEqual(r.returncode, 0, text)
+            self.assertIn("absolute path", r.stderr)
+        self.assertFalse((self.repo / "trail/public/memory").exists())
+
+    def test_path_scan_is_proven_able_to_fail(self):
+        spec = importlib.util.spec_from_file_location("memory_mod", MEMORY)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.prove_path_scan()
+        mod.ABS_PATH = re.compile(r"(?!x)x")  # a scan that never matches must be refused
+        with self.assertRaises(SystemExit):
+            mod.prove_path_scan()
 
     def test_supersede_unknown_refused(self):
-        self.assertNotEqual(self.add("N", "x", supersedes="M0099").returncode, 0)
+        self.assertNotEqual(self.add("N", "x", supersedes="P0099").returncode, 0)
 
     def test_agent_cannot_mark_accepted_founder_can(self):
         r = self.add("Lesson", "x", status="accepted")
@@ -1267,7 +1291,7 @@ class MafProgressiveDisclosure(unittest.TestCase):
         for d in (REPO / "plugins").glob("*/skills"):
             for s in asyncio.run(FileSkillsSource(d).get_skills(SkillsSourceContext(None))):
                 found[s.frontmatter.name] = s
-        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "round-table", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
+        expected = {"orchestrate", "plan", "make", "check", "reflect", "trail-player", "round-table", "toggle-governance", "maf-local-skills", "mcp-local-models", "content-script", "landing-page", "inbox", "figma-plugin-factory", "account-ops", "capture-to-skill", "shared-memory", "mcp-server-factory",
                     "ceo", "cfo", "chief-of-staff", "chro", "clo", "cmo", "coo", "cro", "cto", "sft-dataset-check", "create-skill", "dotnet-generic-crud", "platform-api-mcp", "new-skill", "find-skill"}
         self.assertEqual(set(found), expected)
         tp = found["trail-player"]
@@ -1784,6 +1808,17 @@ class SeatAgents(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual({p.stem for p in (REPO / "plugins/pmcro-seats/agents").glob("*.md")}, ROSTER)
 
+    def test_every_agent_carries_the_full_roster(self):
+        for f in (REPO / "plugins/pmcro-seats/agents").glob("*.md"):
+            text = f.read_text()
+            self.assertIn("## Company roster", text, f.name)
+            for seat in ROSTER:
+                self.assertIn(f"- {seat} (", text, (f.name, seat))
+
+    def test_output_shape_names_owners_not_at_the_table(self):
+        tmpl = (REPO / "plugins/pmcro-seats/skills/round-table/assets/templates/output.md.tmpl").read_text()
+        self.assertIn("## Owners not at the table", tmpl)
+
     def test_hand_edit_of_an_agent_is_detected(self):
         f = REPO / "plugins/pmcro-seats/agents/cfo.md"
         original = f.read_text()
@@ -1838,3 +1873,95 @@ class SeatAgents(unittest.TestCase):
             self.assertIn("no recorded phase", r.stderr)
         finally:
             shutil.rmtree(tmp)
+
+    def test_drift_detects_a_changed_seat_and_passes_an_unchanged_one(self):
+        snap = json.loads((REPO / "plugins/pmcro-seats/skills/round-table/assets/seats.json").read_text())
+        key = "always_ask_" + "sh" + "awn"
+        c = {"bots": [{k: s[k] for k in ("id", "title", "group", "reports_to", "owns", "does_not_own")} for s in snap["seats"]],
+             "laws": [{"id": str(i), **l} for i, l in enumerate(snap["laws"])],
+             "earned_constraints": snap["earned_constraints"], key: snap["always_ask_founder"],
+             "round_tables": [{**t, "note": ""} for t in snap["round_tables"]]}
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        try:
+            f = tmp / "company.json"
+            f.write_text(json.dumps(c))
+            same = subprocess.run([sys.executable, str(SEATS_TOOL), "drift", str(f)], capture_output=True, text=True)
+            self.assertEqual(same.returncode, 0, same.stdout + same.stderr)
+            c["bots"][0]["owns"] += " A new duty."
+            f.write_text(json.dumps(c))
+            changed = subprocess.run([sys.executable, str(SEATS_TOOL), "drift", str(f)], capture_output=True, text=True)
+            self.assertEqual(changed.returncode, 1)
+            self.assertIn("drift: seats", changed.stdout)
+        finally:
+            shutil.rmtree(tmp)
+
+
+TOGGLES = REPO / "plugins/pmcro-toggles/skills/toggle-governance/scripts/toggles.py"
+
+
+class ToggleGovernance(unittest.TestCase):
+    """Every flag has an owner and an expiry; check finds what slipped and changes nothing."""
+
+    def setUp(self):
+        self.dir = pathlib.Path(tempfile.mkdtemp())
+        self.manifest = self.dir / "flags.json"
+
+    def tearDown(self):
+        shutil.rmtree(self.dir)
+
+    def t(self, *a):
+        return subprocess.run([sys.executable, str(TOGGLES), *a, "--manifest", str(self.manifest)], capture_output=True, text=True)
+
+    def add(self, name="new-checkout", typ="boolean", default="false", expires="2026-12-31", today="2026-10-01"):
+        return self.t("add", name, "--type", typ, "--default", default, "--description", "d", "--owner", "cto",
+                      "--expires", expires, "--stages", "internal,100%", "--today", today)
+
+    def test_add_writes_standard_manifest_and_sidecar(self):
+        r = self.add()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        m = json.loads(self.manifest.read_text())
+        self.assertIn("open-feature/cli", m["$schema"])
+        self.assertEqual(m["flags"]["new-checkout"], {"flagType": "boolean", "defaultValue": False, "description": "d"})
+        g = json.loads((self.dir / "flags.governance.json").read_text())
+        self.assertEqual(g["flags"]["new-checkout"]["owner"], "cto")
+
+    def test_add_refuses_bad_input(self):
+        self.assertIn("lowercase", self.add(name="Bad_Name").stderr)
+        self.assertIn("not a integer", self.add(typ="integer", default="true").stderr)
+        self.assertIn("after today", self.add(expires="2026-09-30").stderr)
+        self.add()
+        self.assertIn("already exists", self.add().stderr)
+
+    def test_check_reports_each_problem_and_changes_nothing(self):
+        self.add(expires="2026-10-15")
+        m = json.loads(self.manifest.read_text())
+        m["flags"]["orphan-flag"] = {"flagType": "integer", "defaultValue": "7", "description": "x"}
+        self.manifest.write_text(json.dumps(m))
+        g = self.dir / "flags.governance.json"
+        gv = json.loads(g.read_text())
+        gv["flags"]["gone-flag"] = {"owner": "cmo", "created": "2026-01-01", "expires": "2026-12-01", "stages": ["x"]}
+        g.write_text(json.dumps(gv))
+        (self.dir / "src").mkdir()
+        (self.dir / "src" / "a.py").write_text("if client.get('new-checkout'):\n    pass\n")
+        before = {p.name: p.read_bytes() for p in self.dir.rglob("*") if p.is_file()}
+        r = self.t("check", "--src", str(self.dir / "src"), "--today", "2026-11-01")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("new-checkout: expired on 2026-10-15", r.stdout)
+        self.assertIn("orphan-flag: flag has no governance record", r.stdout)
+        self.assertIn('orphan-flag: default value "7" is not a integer', r.stdout)
+        self.assertIn("gone-flag: governance record but no flag", r.stdout)
+        self.assertIn("new-checkout: named in 1 source file(s)", r.stdout)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.dir.rglob("*") if p.is_file()})
+
+    def test_check_is_clean_for_a_governed_unexpired_flag(self):
+        self.add()
+        r = self.t("check", "--today", "2026-11-01")
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_retire_plan_counts_references(self):
+        self.add()
+        (self.dir / "src").mkdir()
+        (self.dir / "src" / "b.cs").write_text('if (flags.Get("new-checkout")) {}\n// new-checkout-extra is a different flag\n')
+        r = self.t("retire-plan", "new-checkout", "--src", str(self.dir / "src"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("from 1 source file(s)", r.stdout)

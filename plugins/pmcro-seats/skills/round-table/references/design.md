@@ -20,8 +20,18 @@ Only Phase 1 seats (Chief of Staff, CTO Chief, CTO Checker) are EXISTING. Every 
 
 Minutes are recorded only when the founder asks, with `trail-player` (pmcro-core). A `roundtable` entry names exactly the seats that sat, and the writer keeps it in the gitignored `.trail-local/roundtable/`. It is a house rule, not a legal agreement.
 
+## Live test, 2026-10-01
+
+The executive table (Chief of Staff, CEO, CTO Chief, CPO, COO, CFO) was run once on a topic built to cross boundaries: what to sell first (owned by the CPO and by the CRO, who does not sit at that table) and whether to spend on a cloud model (spending is founder-first). Each seat ran as a separate agent with its seat instructions and no tools, in the printed order, each seeing the earlier views; the chair opened and closed.
+
+What held: every seat answered inside its boundary and named the owner of the parts it did not own; all five marked the spend as needing the founder and none decided it; PROPOSED seats said they were advisory; each seat ended with one seed intent and the chair merged them into three, each naming one owner.
+
+What failed, and was fixed: the Chief of Staff could not route without the roster, which the generated agents lacked (now every agent carries the roster); the chair's closing dropped the absent CRO it had named when opening (now the closing call receives the opening, and the output has an "Owners not at the table" section).
+
+Caveats: the run used general-purpose agents given the seat text, not the installed plugin agents; they also had the repository's own instructions in context, which is how seats knew trail-product terms their seat text does not define. The minutes are not stored in this public repository.
+
 ## Not covered or not verified
 
-- The agents were generated and checked for shape and read-only tools; a live conversation with them in Claude Code has not been recorded here.
+- A conversation through the installed plugin agents in Claude Code (the test above used the same seat text in general-purpose agents).
 - Phases are not in `company.json`; they come from the Company Foundation baseline and are fixed in `tools/seats.py`.
 - Other hosts (Cursor, Codex, Copilot) may not load the `agents/` folder.

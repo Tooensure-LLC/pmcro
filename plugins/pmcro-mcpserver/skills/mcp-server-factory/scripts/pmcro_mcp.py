@@ -149,7 +149,7 @@ def build_server(plugins_root="plugins", allow=None, repo_root=".", tools=(), vi
 
         @server.tool(description=f"Show one memory entry by id such as M0003 (read-only; filtered for viewer {viewer}).")
         def memory_show(memory_id: str) -> str:
-            if not re.fullmatch(r"M\d{4}", memory_id):
+            if not re.fullmatch(r"[PMRV]\d{4}", memory_id):
                 return "refused: id looks like M0003"
             return run_script(repo, mem, ["show", memory_id, "--viewer", viewer])
     if "inbox" in tools:
