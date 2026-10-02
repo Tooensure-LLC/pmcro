@@ -12,6 +12,9 @@
 
 /* Light mode: magenta links (AA contrast on white), warm accents. */
 [data-bs-theme="light"] {
+  /* Declared explicitly (Bootstrap's values) so tools/site_contrast.py can bind the light backgrounds (ADR 0033). */
+  --bs-body-bg: #FFFFFF;
+  --bs-tertiary-bg: #F8F9FA;
   --bs-link-color-rgb: 176, 29, 112;
   --bs-link-hover-color-rgb: 176, 74, 16;  /* #B04A10: 5.48:1 on white (ADR 0033) */
   --bs-body-color: #1A1A2E;

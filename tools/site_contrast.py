@@ -1,9 +1,10 @@
 """Check the docs site's brand colors against WCAG 2.1 AA contrast (ADR 0033).
 
 Usage: python tools/site_contrast.py [css]    prints every pair; exits 1 if any pair is below its threshold
-                                              or if its CSS rule no longer sets the listed color
-Each pair is bound to the CSS rule and property that sets its foreground in site/templates/pmcro/public/main.css,
-so changing a color, or the rule that sets it, fails CI until this list is updated and re-measured.
+                                              or if a CSS rule no longer sets the listed foreground or background
+Both colors of every pair are bound to the CSS rule and property that sets them in
+site/templates/pmcro/public/main.css, so changing a color, a token, or the rule that uses it fails CI until
+this list is updated and re-measured.
 """
 import re
 import sys
@@ -14,26 +15,28 @@ CSS = ROOT / "site" / "templates" / "pmcro" / "public" / "main.css"
 
 TEXT, UI = 4.5, 3.0  # WCAG 2.1 AA: normal text 4.5:1 (1.4.3); non-text UI parts 3:1 (1.4.11)
 
-# Each pair names the CSS rule (selector, exactly as written in main.css) and the property that sets the
-# foreground. The check resolves var(--pm-*) tokens and fails if that rule does not set that color, so a pair
-# cannot pass just because the color appears somewhere else in the file. Backgrounds are the measured surface:
-# Bootstrap's light defaults (#FFFFFF body, #F8F9FA tertiary) or the site's own navy, ink and gradient stops.
+# Each pair binds BOTH colors to the CSS that sets them: (selector, property) for the foreground and for the
+# background, exactly as written in main.css. var(--pm-*) tokens are resolved, including tokens inside tokens
+# (the button gradient), so changing a color, a token, or the rule that uses it fails the check (ADR 0033).
+LIGHT, DARK = '[data-bs-theme="light"]', '[data-bs-theme="dark"]'
+HERO = (".pm-hero", "background")
+GRADIENT = (".pm-btn-primary", "background")
 PAIRS = [
-    ("light link", '[data-bs-theme="light"]', "--bs-link-color-rgb", "#B01D70", "#FFFFFF", TEXT),
-    ("light link hover", '[data-bs-theme="light"]', "--bs-link-hover-color-rgb", "#B04A10", "#FFFFFF", TEXT),
-    ("light body text", '[data-bs-theme="light"]', "--bs-body-color", "#1A1A2E", "#FFFFFF", TEXT),
-    ("light role step label on card", ".pm-role .pm-step", "color", "#B01D70", "#F8F9FA", TEXT),
-    ("dark link", '[data-bs-theme="dark"]', "--bs-link-color-rgb", "#FFA064", "#0B1026", TEXT),
-    ("dark link hover", '[data-bs-theme="dark"]', "--bs-link-hover-color-rgb", "#FF78B4", "#0B1026", TEXT),
-    ("dark code text on block", '[data-bs-theme="dark"] article pre > code', "color", "#F5F1FF", "#12173A", TEXT),
-    ("dark role step label on card", '[data-bs-theme="dark"] .pm-role .pm-step', "color", "#FFC24B", "#12173A", TEXT),
-    ("hero tagline on hero (lightest stop)", ".pm-hero .pm-tag", "color", "#CFCBE8", "#1B1F4A", TEXT),
-    ("primary button text on orange stop", ".pm-btn-primary", "color", "#0B1026", "#FF8A3D", TEXT),
-    ("primary button text on coral stop", ".pm-btn-primary", "color", "#0B1026", "#FF5C7A", TEXT),
-    ("primary button text on magenta stop", ".pm-btn-primary", "color", "#0B1026", "#E0389A", TEXT),
-    ("ghost button text on hero", ".pm-btn-ghost", "color", "#FFD9C2", "#1B1F4A", TEXT),
-    ("ghost button border on hero", ".pm-btn-ghost", "border", "#FF8A3D", "#1B1F4A", UI),
-    ("focus ring on hero", ".pm-btn:focus-visible", "outline", "#FFC24B", "#1B1F4A", UI),
+    ("light link", (LIGHT, "--bs-link-color-rgb"), "#B01D70", (LIGHT, "--bs-body-bg"), "#FFFFFF", TEXT),
+    ("light link hover", (LIGHT, "--bs-link-hover-color-rgb"), "#B04A10", (LIGHT, "--bs-body-bg"), "#FFFFFF", TEXT),
+    ("light body text", (LIGHT, "--bs-body-color"), "#1A1A2E", (LIGHT, "--bs-body-bg"), "#FFFFFF", TEXT),
+    ("light role step label on card", (".pm-role .pm-step", "color"), "#B01D70", (LIGHT, "--bs-tertiary-bg"), "#F8F9FA", TEXT),
+    ("dark link", (DARK, "--bs-link-color-rgb"), "#FFA064", (DARK, "--bs-body-bg"), "#0B1026", TEXT),
+    ("dark link hover", (DARK, "--bs-link-hover-color-rgb"), "#FF78B4", (DARK, "--bs-body-bg"), "#0B1026", TEXT),
+    ("dark code text on block", (DARK + " article pre > code", "color"), "#F5F1FF", (DARK, "--bs-tertiary-bg"), "#12173A", TEXT),
+    ("dark role step label on card", (DARK + " .pm-role .pm-step", "color"), "#FFC24B", (DARK, "--bs-tertiary-bg"), "#12173A", TEXT),
+    ("hero tagline on hero (lightest stop)", (".pm-hero .pm-tag", "color"), "#CFCBE8", HERO, "#1B1F4A", TEXT),
+    ("primary button text on orange stop", (".pm-btn-primary", "color"), "#0B1026", GRADIENT, "#FF8A3D", TEXT),
+    ("primary button text on coral stop", (".pm-btn-primary", "color"), "#0B1026", GRADIENT, "#FF5C7A", TEXT),
+    ("primary button text on magenta stop", (".pm-btn-primary", "color"), "#0B1026", GRADIENT, "#E0389A", TEXT),
+    ("ghost button text on hero", (".pm-btn-ghost", "color"), "#FFD9C2", HERO, "#1B1F4A", TEXT),
+    ("ghost button border on hero", (".pm-btn-ghost", "border"), "#FF8A3D", HERO, "#1B1F4A", UI),
+    ("focus ring on hero", (".pm-btn:focus-visible", "outline"), "#FFC24B", HERO, "#1B1F4A", UI),
 ]
 
 
@@ -53,10 +56,19 @@ def parse_rules(css):
     return rules
 
 
+def resolve(value, tokens):
+    """Replace var(--pm-*) references with their :root values, repeating so tokens inside tokens resolve too."""
+    for _ in range(5):
+        new = re.sub(r"var\((--pm-[\w-]+)\)", lambda m: tokens.get(m.group(1), m.group(0)), value)
+        if new == value:
+            break
+        value = new
+    return value
+
+
 def sets_color(value, hex_color, tokens):
-    """True when a declared value (hex, rgb triple, or var(--pm-*) token) is the given color."""
-    for name, token_value in tokens.items():
-        value = value.replace(f"var({name})", token_value)
+    """True when a declared value (hex, rgb triple, or var(--pm-*) token, resolved) contains the given color."""
+    value = resolve(value, tokens)
     h = hex_color.lstrip("#")
     r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
     return (re.search(rf"#{h}\b", value, re.IGNORECASE) is not None
@@ -83,15 +95,18 @@ def main(argv):
     rules = parse_rules(css_path.read_text(encoding="utf-8"))
     tokens = {k: v for k, v in rules.get(":root", {}).items() if k.startswith("--pm-")}
     failures = 0
-    for name, selector, prop, fg, bg, need in PAIRS:
+    for name, (fg_sel, fg_prop), fg, (bg_sel, bg_prop), bg, need in PAIRS:
         r = ratio(fg, bg)
-        declared = rules.get(selector, {}).get(prop)
-        bound = declared is not None and sets_color(declared, fg, tokens)
-        ok = r >= need and bound
+        notes = []
+        for sel, prop, color in ((fg_sel, fg_prop, fg), (bg_sel, bg_prop, bg)):
+            declared = rules.get(sel, {}).get(prop)
+            if declared is None or not sets_color(declared, color, tokens):
+                notes.append(f"NOT SET: {sel} {{ {prop} }} is {declared!r}, expected {color}")
+        ok = r >= need and not notes
         failures += not ok
-        note = "" if bound else f"  NOT SET: {selector} {{ {prop} }} is {declared!r}, expected {fg}"
+        note = ("  " + "; ".join(notes)) if notes else ""
         print(f"{'PASS' if ok else 'FAIL'}  {r:5.2f}:1 (need {need})  {name}  {fg} on {bg}{note}")
-    print(f"{len(PAIRS) - failures}/{len(PAIRS)} pairs pass WCAG 2.1 AA and are set by their CSS rule")
+    print(f"{len(PAIRS) - failures}/{len(PAIRS)} pairs pass WCAG 2.1 AA with both colors set by their CSS rules")
     return 1 if failures else 0
 
 
