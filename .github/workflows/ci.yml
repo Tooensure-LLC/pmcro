@@ -146,6 +146,8 @@ jobs:
           dotnet-version: "10.0.x"
       - name: Plugin catalog and docs sidebar equal what tools/site_catalog.py generates
         run: python tools/site_catalog.py gen --check
+      - name: Brand colors meet WCAG 2.1 AA and are set by their CSS rules (ADR 0033)
+        run: python tools/site_contrast.py
       - name: Restore pinned docfx
         run: dotnet tool restore
       - name: Build the site (warnings are errors)

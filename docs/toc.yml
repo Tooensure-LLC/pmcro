@@ -81,3 +81,5 @@
     href: decisions/0031-docs-site-docfx-build-only.md
   - name: "0032 · Docs site configuration upgrade: generated sidebar, edit links, page metadata, docfx kept current"
     href: decisions/0032-docs-site-configuration-upgrade.md
+  - name: "0033 · Docs site brand colors meet WCAG 2.1 AA contrast, checked in CI"
+    href: decisions/0033-docs-site-wcag-contrast.md
