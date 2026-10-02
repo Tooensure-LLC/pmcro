@@ -52,6 +52,24 @@ article h1 {
   letter-spacing: -0.02em;
 }
 
+/* Code blocks: readable in both themes (found in review: dark mode rendered black text on a dark block). */
+article pre {
+  border-radius: 10px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+}
+
+article pre > code,
+article pre > code.hljs {
+  background: transparent;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] article pre > code,
+[data-bs-theme="dark"] article pre > code.hljs {
+  color: #F5F1FF;
+}
+
 /* Tables read as cards. */
 article table {
   border-radius: 10px;
@@ -94,6 +112,9 @@ article table {
   width: min(100%, 1100px);
   height: auto;
   margin: 0 auto;
+  /* Fade the art's own background into the section so no rectangle edge shows. */
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, transparent 100%);
 }
 
 .pm-cta {
@@ -191,6 +212,14 @@ article table {
 .pm-note {
   font-size: .9rem;
   opacity: .8;
+}
+
+@media (max-width: 576px) {
+  .pm-install {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: .82rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
