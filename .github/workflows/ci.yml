@@ -144,7 +144,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - name: Plugin catalog page equals what tools/site_catalog.py generates
+      - name: Plugin catalog and docs sidebar equal what tools/site_catalog.py generates
         run: python tools/site_catalog.py gen --check
       - name: Restore pinned docfx
         run: dotnet tool restore
@@ -152,6 +152,13 @@ jobs:
         run: dotnet docfx site/docfx.json --warningsAsErrors
       - name: Every page and asset the landing page needs was produced
         run: |
-          for f in index.html plugins.html docs.html docs/product/trail.html docs/decisions/0031-docs-site-docfx-build-only.html images/hero.svg images/logo.svg images/favicon.svg public/main.css public/main.js; do
+          for f in index.html plugins.html docs/index.html docs/toc.json docs/marketplace.html docs/product/trail.html docs/decisions/0031-docs-site-docfx-build-only.html images/hero.svg images/logo.svg images/favicon.svg public/main.css public/main.js; do
             test -s "site/_site/$f" || { echo "missing site/_site/$f"; exit 1; }
           done
+      - name: Docs pages carry the docs sidebar, an edit link and a description; generated pages have no edit link
+        run: |
+          grep -q 'name="docfx:tocrel" content="toc.html"' site/_site/docs/marketplace.html || { echo "docs/marketplace.html is not using the docs sidebar"; exit 1; }
+          grep -q 'name="docfx:tocrel" content="../toc.html"' site/_site/docs/decisions/0032-docs-site-configuration-upgrade.html || { echo "decision pages are not using the docs sidebar"; exit 1; }
+          grep -q 'class="edit-link"' site/_site/docs/marketplace.html || { echo "no edit link on docs/marketplace.html"; exit 1; }
+          grep -q 'content="A numbered PMCR-O architecture decision record' site/_site/docs/decisions/0032-docs-site-configuration-upgrade.html || { echo "decision description missing"; exit 1; }
+          if grep -q 'class="edit-link"' site/_site/plugins.html; then echo "generated plugins page must not offer an edit link"; exit 1; fi

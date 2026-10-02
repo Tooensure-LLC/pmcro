@@ -1,0 +1,13 @@
+# Keeps the pinned docs-site tool current (ADR 0032). Dependabot opens a pull request; CI's docs-site job
+# must pass and a person merges it. Only docfx is watched so this file changes nothing else in the repo.
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-name: "docfx"
+    labels:
+      - "docs-site"
+    open-pull-requests-limit: 2
