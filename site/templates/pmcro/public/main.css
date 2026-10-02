@@ -70,7 +70,11 @@ article pre > code.hljs {
   color: #F5F1FF;
 }
 
-/* Tables read as cards. */
+/* Tables read as cards; identifiers in the first column never wrap mid-name. */
+article table td:first-child code {
+  white-space: nowrap;
+}
+
 article table {
   border-radius: 10px;
   overflow: hidden;
