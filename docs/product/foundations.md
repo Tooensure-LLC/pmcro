@@ -13,7 +13,7 @@ A strange loop is a hierarchy that, as you climb it, returns to where it started
 What the lens asks of the design, and what already answers it:
 
 - A system that only checks itself cannot certify itself. Hence the Checker must be independent and must rerun the proof (ADR 0013).
-- Loops need brakes: MaxLoops is 3, HALT hands control to the human, and records are append-only so the loop cannot rewrite its own past.
+- Loops need brakes: there is no fixed loop count (Loop Until Done), but two LOOP verdicts in a row naming the same defect IDs stop the loop and ask the human, HALT hands control to the human, per-cycle time and token budgets stay (see `docs/offline-kit.md`), and records are append-only so the loop cannot rewrite its own past.
 - Self-reference must not become self-authorization: a constraint proposed by the Reflector stays a candidate until a human accepts it (ACCEPT is human-owned).
 
 ## Buber: I and Thou

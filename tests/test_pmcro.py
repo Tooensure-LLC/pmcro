@@ -1803,6 +1803,53 @@ class SeatAgents(unittest.TestCase):
         existing = {s["id"] for s in snap["seats"] if s["status"] == "EXISTING"}
         self.assertEqual(existing, {"chief-of-staff", "cto", "cto-checker"})
 
+    def seats_module(self):
+        spec = importlib.util.spec_from_file_location("seats_tool", SEATS_TOOL)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m
+
+    def fixture_company(self, m, tmp, law_text="A trail loops until a separate Checker says PASS or HALT."):
+        """A company.json shaped like the real one, built from the committed snapshot; no personal name in it."""
+        snap = json.loads((REPO / "plugins/pmcro-seats/skills/round-table/assets/seats.json").read_text())
+        company = {"bots": [{k: s[k] for k in ("id", "title", "group", "reports_to", "owns", "does_not_own")} for s in snap["seats"]],
+                   "laws": [{"id": f"EC-{i:03d}", "name": l["name"], "text": l["text"]} for i, l in enumerate(snap["laws"], 1)],
+                   "earned_constraints": snap["earned_constraints"], m.ASK_KEY: snap["always_ask_founder"],
+                   "round_tables": snap["round_tables"]}
+        company["laws"][3] = {"id": "EC-009", "name": "Loop Until Done", "text": law_text}
+        path = tmp / "company.json"
+        path.write_text(json.dumps(company))
+        return path
+
+    def test_import_then_drift_runs_end_to_end_on_a_temp_snapshot(self):
+        import contextlib, io
+        m = self.seats_module()
+        with tempfile.TemporaryDirectory() as t:
+            tmp = pathlib.Path(t)
+            m.ROOT, m.SNAPSHOT = tmp, tmp / "seats.json"
+            company = self.fixture_company(m, tmp)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                m.cmd_import(str(company), "a" * 40)  # used to crash on its own status line
+            self.assertIn("imported 15 seats from aaaaaaa", out.getvalue())
+            snap = json.loads(m.SNAPSHOT.read_text())
+            self.assertEqual(snap["source"]["sha"], "a" * 40)
+            self.assertEqual([l["name"] for l in snap["laws"]][3], "Loop Until Done")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(m.cmd_drift(str(company)), 0)
+            company.write_text(company.read_text().replace("Checker says PASS", "Checker says MAYBE"))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(m.cmd_drift(str(company)), 1)  # must fail when company.json moves on
+            self.assertIn("drift: laws differs", out.getvalue())
+
+    def test_committed_snapshot_carries_loop_until_done_and_not_the_old_cap(self):
+        snap = json.loads((REPO / "plugins/pmcro-seats/skills/round-table/assets/seats.json").read_text())
+        names = [l["name"] for l in snap["laws"]]
+        self.assertIn("Loop Until Done", names)
+        self.assertNotIn("MaxLoops", names)
+        self.assertNotIn("Max 3 loops", json.dumps(snap))
+
     def test_agents_equal_generator_output(self):
         r = subprocess.run([sys.executable, str(SEATS_TOOL), "gen", "--check"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

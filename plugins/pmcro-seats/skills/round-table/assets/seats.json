@@ -2,7 +2,7 @@
   "source": {
     "repo": "Tooensure-LLC/pmcro-company",
     "path": "company.json",
-    "sha": "72931ba7d624ed843bde7de12c99ced600824969"
+    "sha": "cd4c19b9e4e72ec9c75ce34b2bb21720f307595f"
   },
   "seats": [
     {
@@ -170,8 +170,8 @@
       "text": "Nobody scores their own work; only a separate Checker says PASS, LOOP or HALT."
     },
     {
-      "name": "MaxLoops",
-      "text": "Max 3 loops per trail, then stop and ask the founder."
+      "name": "Loop Until Done",
+      "text": "A trail loops until a separate Checker says PASS or HALT; there is no fixed count. Two LOOP verdicts in a row that name the same defect IDs stop the loop and ask the founder."
     },
     {
       "name": "Relative Paths",

@@ -53,5 +53,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0027](decisions/0027-company-tier-needs-declared-private-repo.md) | Company tier needs a repo declared private; tier entries scanned and numbered per tier |
 | [0028](decisions/0028-seat-agents-generated-from-company-json.md) | Seat agents generated from company.json, read-only, one per seat |
 | [0029](decisions/0029-memory-ids-csuite-deprecation-seat-drift-toggles.md) | Per-tier memory ids, pmcro-csuite deprecated, seat drift check, toggle governance |
+| [0030](decisions/0030-law-loop-until-done-mirrored.md) | Law EC-009 Loop Until Done mirrored from the company repo (cd4c19b) |
 
 New decision: copy the last record, increment the number, and add a row above.

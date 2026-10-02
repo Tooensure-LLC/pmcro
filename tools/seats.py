@@ -62,7 +62,7 @@ def cmd_import(company_json, sha):
     if NAME in text:
         sys.exit("refused: the founder's personal name is still in the snapshot")
     SNAPSHOT.write_text(text)
-    print(f"imported {len(seats)} seats from {sha[:7]} -> {SNAPSHOT.relative_to(ROOT)}")
+    print(f"imported {len(snap['seats'])} seats from {sha[:7]} -> {SNAPSHOT.relative_to(ROOT)}")
 
 
 def render(seat, snap):

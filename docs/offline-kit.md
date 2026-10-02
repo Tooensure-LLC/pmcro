@@ -30,7 +30,7 @@ A 24/7 agent cannot wait for a human approval, so it must be safe without one.
 | --- | --- |
 | Tools are read-only plus one scratch directory; no network, no shell outside the scratch directory | nothing it does can damage anything that matters |
 | `allowed_tools` per role (ADR 0005); the Checker has read tools only | a mistake cannot become a write |
-| MaxLoops = 3, a wall-clock and token budget per cycle, then HALT and wait | no runaway loops |
+| Loop Until Done (no fixed count; two LOOP verdicts in a row naming the same defect IDs stop the loop and ask), and a wall-clock and token budget per cycle, then HALT and wait | no runaway loops or runaway cost; spending stays the founder's |
 | Every cycle writes a trail frame with cost (tokens, model, seconds, loops) before acting | Log Before Act; economic accounting |
 | Output leaves as a git bundle the founder reviews; nothing pushes itself | a human decides what reaches a real repo |
 | Private and roundtable tiers stay on that machine and are never in a bundle | ADR 0003 |

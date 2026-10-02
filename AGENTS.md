@@ -43,5 +43,5 @@ that skips documentation has not finished the task.
 
 ## Laws that bind agents working here
 
-Verify first. Log before act. Only the Checker issues PASS, LOOP or HALT. MaxLoops is 3.
+Verify first. Log before act. Only the Checker issues PASS, LOOP or HALT. Loop Until Done: a trail loops until a separate Checker says PASS or HALT; there is no fixed count. Two LOOP verdicts in a row that name the same defect IDs stop the loop and ask the founder.
 Entries in `.trail-local/` are private: never read them into commits, summaries or training data.
