@@ -432,3 +432,7 @@ FodyWeavers.xsd
 .trail-local/
 __pycache__/
 *.pyc
+
+# Docs site build output and docfx intermediates (ADR 0031)
+site/_site/
+site/obj/
