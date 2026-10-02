@@ -10,6 +10,7 @@
   queue.py list --stale DAYS                     queued items older than DAYS, so no area starves behind urgent ones
 Storage: <tier dir>/inbox/NNNN.json (immutable message) + NNNN.events.jsonl (append-only status log).
 Tier dirs match trail-player: public/company -> trail/, roundtable/private -> .trail-local/ (must be gitignored).
+Writing the company tier needs the repo declared private (git config pmcro.repoVisibility private); listing never creates folders.
 Rules: adding identical text in the same tier returns the existing id (safe against double sends); a claim is
 atomic (O_EXCL), so two workers cannot take the same item; done/defer/drop need a prior claim; nothing is
 ever edited or deleted. Priority 0 is most urgent and needs --reason; a change of priority is a logged event with a
@@ -32,14 +33,25 @@ def root():
     return pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 
 
-def inbox(tier):
+def declared_private(r):
+    """Fail closed: the company tier is committable, so writing it needs an explicit local declaration that the repo is private."""
+    out = subprocess.run(["git", "-C", str(r), "config", "--get", "pmcro.repoVisibility"], capture_output=True, text=True)
+    return out.stdout.strip().lower() == "private"
+
+
+def inbox(tier, write=True):
+    """Tier inbox folder. Writes to the committable company tier need a repo declared private; reads do not create folders."""
     r = root()
+    if write and tier == "company" and not declared_private(r):
+        sys.exit("refused: the company tier is committable and this repo is not declared private; if it is private, run "
+                 "`git config pmcro.repoVisibility private` once, otherwise use roundtable or private")
     if tier in LOCAL_ONLY:
         rel = TIERS[tier]
         if subprocess.run(["git", "-C", str(r), "check-ignore", "-q", rel + "/x"]).returncode != 0:
             sys.exit(f"refused: {rel} is not gitignored; add it to .gitignore first")
     d = r / TIERS[tier] / "inbox"
-    d.mkdir(parents=True, exist_ok=True)
+    if write:
+        d.mkdir(parents=True, exist_ok=True)
     return d
 
 
@@ -150,7 +162,7 @@ def listing(a, only_next=False):
     for t in ([a.tier] if a.tier else TIERS):
         if t in LOCAL_ONLY and not (root() / TIERS[t] / "inbox").is_dir():
             continue
-        rows += items(inbox(t))
+        rows += items(inbox(t, write=False))
     if getattr(a, "status", None):
         rows = [m for m in rows if m["status"] == a.status]
     if getattr(a, "stale", None) is not None:

@@ -11,7 +11,8 @@ roundtable and private -> .trail-local/ (must be gitignored). Entries are never 
 entry with --supersedes, and superseded entries are hidden unless --all.
 Who sees what (--viewer): founder sees every tier; seat:ID sees public, company and roundtable entries that
 list that seat; company sees public and company; public sees public only. The default viewer is public.
-Rules: credential-shaped text is refused; roundtable entries must name --seats; only --source founder may set
+Rules: credential-shaped text is refused; the company tier is written only when the repo is declared private
+(git config pmcro.repoVisibility private); roundtable entries must name --seats; only --source founder may set
 --status accepted (agents write candidate; acceptance of a lesson is human-owned). Search ranks title, tag and
 body matches with a simple inverse-frequency weight; it is keyword search, not meaning search.
 Output: one line per hit with id, tier, status, title and a snippet; "refused: ..." and exit 1 on a rule violation.
@@ -29,11 +30,20 @@ def root():
     return pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 
 
+def declared_private(r):
+    """Fail closed: the company tier is committable, so writing it needs an explicit local declaration that the repo is private."""
+    out = subprocess.run(["git", "-C", str(r), "config", "--get", "pmcro.repoVisibility"], capture_output=True, text=True)
+    return out.stdout.strip().lower() == "private"
+
+
 def mem_dir(tier, create=False):
     r = root()
     rel = TIERS[tier]
     if tier in LOCAL_ONLY and subprocess.run(["git", "-C", str(r), "check-ignore", "-q", rel + "/x"]).returncode != 0:
         sys.exit(f"refused: {rel} is not gitignored; add it to .gitignore first")
+    if create and tier == "company" and not declared_private(r):
+        sys.exit("refused: the company tier is committable and this repo is not declared private; if it is private, run "
+                 "`git config pmcro.repoVisibility private` once, otherwise use roundtable or private")
     d = r / rel / "memory"
     if create:
         d.mkdir(parents=True, exist_ok=True)

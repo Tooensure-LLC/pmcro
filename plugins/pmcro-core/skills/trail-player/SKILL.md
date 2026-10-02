@@ -20,7 +20,7 @@ A place for the founder to speak plainly to the company. It exists because direc
 | Tier | Who may see it | Stored in |
 | --- | --- | --- |
 | `public` | anyone | `trail/public/` (committable) |
-| `company` | every agent and seat in the company | `trail/company/` (committable only if the repo is private) |
+| `company` | every agent and seat in the company | `trail/company/` (committable; the writer refuses unless the repo is declared private) |
 | `roundtable` | only the named seats on the entry, with a confidentiality note | `.trail-local/roundtable/` (gitignored) |
 | `private` | the founder only | `.trail-local/private/` (gitignored) |
 
@@ -33,11 +33,11 @@ Read `references/tiers.md` when the person asks how a tier works, wants to chang
 3. **Choose the tier.** Propose one with a one-line reason, then confirm. For `roundtable`, also confirm which seats may read it.
 4. **Record** with the writer script, never by hand-editing files:
    ```
-   python <skill-dir>/scripts/record.py --tier private --kind confession --body-file entry.txt [--seats cfo,cto] [--summary "..."] [--refs 0007]
+   python <skill-dir>/scripts/record.py --tier private --kind habit --body-file entry.txt [--seats cfo,cto] [--summary "..."] [--refs 0007]
    ```
-   Kinds: `goal`, `idea`, `secret`, `habit`, `problem`, `decision`, `note`. The script stamps the time from the clock, assigns the next number, sets the file location from the tier, and refuses to write `private` or `roundtable` entries anywhere that is not gitignored.
+   Kinds: `goal`, `idea`, `secret`, `habit`, `problem`, `decision`, `note`. The script stamps the time from the clock, assigns the next number within the tier (each tier counts on its own, so a gap never reveals another tier), sets the file location from the tier, and refuses: `private` or `roundtable` entries anywhere that is not gitignored; `company` entries unless the repo is declared private; and any body or summary containing credential-shaped text or an absolute path (EC-0001). A refusal names the rule, never the matched text.
 5. **Confirm** what was recorded: number, tier, who can see it. Do not echo private content into any shared place.
-6. **Replay** with `python <skill-dir>/scripts/record.py --replay --tier private` (or another tier). Replaying shows only tiers the current reader is cleared for; as the founder, all of them.
+6. **Replay** with `python <skill-dir>/scripts/record.py --replay --tier private` (or another tier). Replay prints the tier named. It cannot check who is asking: who sees a tier comes from where the files sit and what a session is given. Replay `private` or `roundtable` only in a session the founder alone can read.
 
 ## Economic note
 
@@ -45,4 +45,4 @@ If an entry concerns spending, a product, or a deadline, add `--cost` fields if 
 
 ## What this skill does not do
 
-It does not generate the C-Suite. A later skill will create seat bots that read only the tiers they are cleared for. It does not decide training eligibility, send entries anywhere, or push to git.
+It does not generate the C-Suite. A later skill will create seat bots that are given only the tiers their seat may read. It does not decide training eligibility, send entries anywhere, or push to git.

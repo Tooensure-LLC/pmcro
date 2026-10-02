@@ -49,5 +49,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0024](decisions/0024-no-personal-names-in-the-application.md) | The owner's personal name is not in the application |
 | [0025](decisions/0025-generic-crud-design-from-the-owner.md) | The owner's generic CRUD design (BaseEntity, generic repository, unit of work) becomes a skill |
 | [0026](decisions/0026-platform-apis-become-mcp-tools-not-agents.md) | Platform APIs become generated MCP tools, not agents; writes off by default |
+| [0027](decisions/0027-company-tier-needs-declared-private-repo.md) | Company tier needs a repo declared private; tier entries scanned and numbered per tier |
 
 New decision: copy the last record, increment the number, and add a row above.

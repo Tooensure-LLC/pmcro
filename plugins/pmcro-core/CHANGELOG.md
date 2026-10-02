@@ -1,5 +1,10 @@
 # Changelog: pmcro-core
 
+## 0.7.0
+
+- `trail-player`: `record.py` refuses credential-shaped text and absolute paths in the body or summary in every tier (EC-0001; the check is proven able to fail before each write, and a refusal never echoes the text); refuses the committable `company` tier unless the repo is declared private (`git config pmcro.repoVisibility private`); numbers each tier on its own so gaps never reveal another tier. SKILL.md no longer claims replay checks the reader. See ADR 0027.
+- `inbox`: `queue.py` refuses writes to the `company` tier unless the repo is declared private; listing no longer creates tier folders.
+
 ## 0.6.0
 
 - `new-skill`: every new skill now also gets an input shape (`assets/templates/input.md.tmpl`) and `scripts/check_input.py`, which accepts a complete request or denies it and returns the shape to fill in. The SKILL.md template gains a Gotchas section (the Agent Skills docs call gotchas the highest-value content), and `new-skill` now says to run `find-skill` and to consult the Agent Skills docs server when connected.

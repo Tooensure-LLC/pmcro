@@ -292,6 +292,16 @@ class InboxQueue(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.repo)
 
+    def test_company_inbox_write_refused_unless_declared_private(self):
+        q = lambda *a: subprocess.run([sys.executable, str(QUEUE), *a], cwd=self.repo, capture_output=True, text=True)
+        r = q("add", "--tier", "company", "--text", "hello")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not declared private", r.stderr)
+        q("list")
+        self.assertFalse((self.repo / "trail/company").exists())
+        subprocess.run(["git", "-C", str(self.repo), "config", "pmcro.repoVisibility", "private"], check=True)
+        self.assertEqual(q("add", "--tier", "company", "--text", "hello").returncode, 0)
+
     def q(self, *args):
         return subprocess.run([sys.executable, str(QUEUE), *args], cwd=self.repo, capture_output=True, text=True)
 
@@ -805,10 +815,18 @@ class SharedMemory(unittest.TestCase):
     def setUp(self):
         self.repo = pathlib.Path(tempfile.mkdtemp())
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        subprocess.run(["git", "-C", str(self.repo), "config", "pmcro.repoVisibility", "private"], check=True)
         (self.repo / ".gitignore").write_text(".trail-local/\n")
 
     def tearDown(self):
         shutil.rmtree(self.repo)
+
+    def test_company_tier_refused_when_repo_not_declared_private(self):
+        subprocess.run(["git", "-C", str(self.repo), "config", "--unset", "pmcro.repoVisibility"], check=True)
+        r = self.add("co fact", "internal", tier="company")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not declared private", r.stderr)
+        self.assertFalse((self.repo / "trail/company").exists())
 
     def m(self, *args):
         return subprocess.run([sys.executable, str(MEMORY), *args], cwd=self.repo, capture_output=True, text=True)
@@ -993,11 +1011,10 @@ class McpSkillsServerWithMaf(unittest.TestCase):
         return asyncio.run(coro)
 
     def test_maf_discovers_every_repo_skill_and_loads_on_demand(self):
-        from mcp.shared.memory import create_connected_server_and_client_session
-        from agent_framework import MCPSkillsSource, SkillsSourceContext
-        m = _mcps("pmcro_mcp")
-
         async def go():
+            from mcp.shared.memory import create_connected_server_and_client_session
+            from agent_framework import MCPSkillsSource, SkillsSourceContext
+            m = _mcps("pmcro_mcp")
             server, cat = m.build_server(str(REPO / "plugins"))
             async with create_connected_server_and_client_session(server._mcp_server) as session:
                 skills = await MCPSkillsSource(client=session).get_skills(SkillsSourceContext(None))
@@ -1293,6 +1310,87 @@ class TrailPlayerGuards(unittest.TestCase):
         self.run_rec("--tier", "private", "--kind", "note")
         names = sorted(p.name for p in (self.repo / ".trail-local/private").glob("*.json"))
         self.assertEqual(names, ["0001-note.json", "0002-note.json"])
+
+    # Bad samples are assembled at run time so this file holds no credential-shaped text or absolute path.
+    KEY = "sk-" + "a1" * 12
+    WINPATH = "C:" + "\\" + "Users" + "\\" + "someone" + "\\" + "notes"
+    NIXPATH = "/" + "home/someone/notes"
+
+    def body(self, text):
+        (self.repo / "e.txt").write_text(text)
+
+    def entries(self):
+        return sorted(p.name for p in self.repo.rglob("*.json") if ".git" not in p.parts)
+
+    def test_credential_refused_in_every_tier_and_not_echoed(self):
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        for tier in ("public", "private"):
+            self.body("my key is " + self.KEY)
+            r = self.run_rec("--tier", tier, "--kind", "note")
+            self.assertNotEqual(r.returncode, 0, tier)
+            self.assertIn("credential", r.stderr)
+            self.assertNotIn(self.KEY, r.stderr + r.stdout)
+        self.assertEqual(self.entries(), [])
+
+    def test_assignment_and_json_style_secrets_refused(self):
+        for text in ("password = " + "hunter" + "2222", '{"token": "' + "abc" + 'defghij"}'):
+            self.body(text)
+            r = self.run_rec("--tier", "public", "--kind", "note")
+            self.assertNotEqual(r.returncode, 0, text)
+        self.assertEqual(self.entries(), [])
+
+    def test_absolute_paths_refused_windows_and_posix(self):
+        for text in (self.WINPATH, self.NIXPATH, "see " + self.WINPATH + " later"):
+            self.body(text)
+            r = self.run_rec("--tier", "public", "--kind", "note")
+            self.assertNotEqual(r.returncode, 0, text)
+            self.assertIn("absolute path", r.stderr)
+        self.assertEqual(self.entries(), [])
+
+    def test_summary_is_scanned_too(self):
+        self.body("fine")
+        r = self.run_rec("--tier", "public", "--kind", "note", "--summary", "key " + self.KEY)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.entries(), [])
+
+    def test_relative_paths_urls_and_plain_prose_allowed(self):
+        self.body("see trail/public/0001-note.json and https://example.com/home/page; I forgot my password again")
+        r = self.run_rec("--tier", "public", "--kind", "note")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_scanner_is_proven_able_to_fail_before_use(self):
+        spec = importlib.util.spec_from_file_location("record_mod", RECORD)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        m.prove_scanner()  # a working scanner passes its own proof
+        m.scan = lambda text: []  # a scanner that finds nothing must be refused
+        with self.assertRaises(SystemExit):
+            m.prove_scanner()
+
+    def test_company_tier_refused_in_a_repo_not_declared_private(self):
+        r = self.run_rec("--tier", "company", "--kind", "note")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not declared private", r.stderr)
+        self.assertFalse((self.repo / "trail/company").exists())
+
+    def test_company_tier_written_when_declared_private(self):
+        subprocess.run(["git", "-C", str(self.repo), "config", "pmcro.repoVisibility", "private"], check=True)
+        r = self.run_rec("--tier", "company", "--kind", "note")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_each_tier_is_numbered_on_its_own(self):
+        (self.repo / ".gitignore").write_text(".trail-local/\n")
+        for _ in range(3):
+            self.run_rec("--tier", "private", "--kind", "note")
+        self.run_rec("--tier", "public", "--kind", "note")
+        self.assertEqual(sorted(p.name for p in (self.repo / "trail/public").glob("*.json")), ["0001-note.json"])
+        self.assertEqual(len(list((self.repo / ".trail-local/private").glob("*.json"))), 3)
+
+    def test_docs_do_not_promise_a_reader_check_that_does_not_exist(self):
+        skill = RECORD.parent.parent
+        for rel in ("SKILL.md", "references/tiers.md"):
+            self.assertNotIn("cleared for", (skill / rel).read_text())
+        self.assertIn("cannot check who", (skill / "SKILL.md").read_text())
 
 
 def _load_mcp():
