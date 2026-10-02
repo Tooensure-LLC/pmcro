@@ -57,5 +57,6 @@ Every file under `docs/` must be linked here (the validator checks).
 | [0031](decisions/0031-docs-site-docfx-build-only.md) | Docs site: docfx 2.81.0, curated public pages, built and checked in CI, never deployed by agents |
 | [0032](decisions/0032-docs-site-configuration-upgrade.md) | Docs site configuration upgrade: generated sidebar, edit links, page metadata, docfx kept current by Dependabot |
 | [0033](decisions/0033-docs-site-wcag-contrast.md) | Docs site brand colors meet WCAG 2.1 AA contrast; tools/site_contrast.py checks it in CI |
+| [0034](decisions/0034-contrast-check-every-background-stop.md) | The contrast check measures every background stop, named or not; the worst decides |
 
 New decision: copy the last record, increment the number, and add a row above.

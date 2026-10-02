@@ -83,3 +83,5 @@
     href: decisions/0032-docs-site-configuration-upgrade.md
   - name: "0033 · Docs site brand colors meet WCAG 2.1 AA contrast, checked in CI"
     href: decisions/0033-docs-site-wcag-contrast.md
+  - name: "0034 · The contrast check measures every background stop, not only the listed one"
+    href: decisions/0034-contrast-check-every-background-stop.md

@@ -4,7 +4,8 @@ Usage: python tools/site_contrast.py [css]    prints every pair; exits 1 if any 
                                               or if a CSS rule no longer sets the listed foreground or background
 Both colors of every pair are bound to the CSS rule and property that sets them in
 site/templates/pmcro/public/main.css, so changing a color, a token, or the rule that uses it fails CI until
-this list is updated and re-measured.
+this list is updated and re-measured. Each pair is measured against every color in its background declaration
+(all gradient stops, named or not), and the worst one decides (ADR 0034).
 """
 import re
 import sys
@@ -89,24 +90,39 @@ def ratio(fg, bg):
     return (hi + 0.05) / (lo + 0.05)
 
 
+def surface_colors(value, tokens):
+    """Every #RRGGBB color in a resolved background declaration (all stops of a gradient), in order, without repeats."""
+    seen = []
+    for c in re.findall(r"#[0-9A-Fa-f]{6}\b", resolve(value, tokens)):
+        if c.upper() not in seen:
+            seen.append(c.upper())
+    return seen
+
+
 def main(argv):
-    """Print each pair with its ratio and verdict; return 1 on any contrast failure or unbound color."""
+    """Print each pair's worst-case ratio and verdict; return 1 on any contrast failure or unbound color."""
     css_path = Path(argv[1]) if len(argv) > 1 else CSS
     rules = parse_rules(css_path.read_text(encoding="utf-8"))
     tokens = {k: v for k, v in rules.get(":root", {}).items() if k.startswith("--pm-")}
     failures = 0
     for name, (fg_sel, fg_prop), fg, (bg_sel, bg_prop), bg, need in PAIRS:
-        r = ratio(fg, bg)
         notes = []
         for sel, prop, color in ((fg_sel, fg_prop, fg), (bg_sel, bg_prop, bg)):
             declared = rules.get(sel, {}).get(prop)
             if declared is None or not sets_color(declared, color, tokens):
                 notes.append(f"NOT SET: {sel} {{ {prop} }} is {declared!r}, expected {color}")
+        # Judge the foreground against every color the background really contains (ADR 0034): a gradient is
+        # only as readable as its worst stop, including stops this list does not name.
+        declared_bg = rules.get(bg_sel, {}).get(bg_prop) or bg
+        stops = surface_colors(declared_bg, tokens) or [bg.upper()]
+        worst_stop = min(stops, key=lambda s: ratio(fg, s))
+        r = ratio(fg, worst_stop)
         ok = r >= need and not notes
         failures += not ok
+        where = f" (worst stop {worst_stop} of {len(stops)})" if len(stops) > 1 else ""
         note = ("  " + "; ".join(notes)) if notes else ""
-        print(f"{'PASS' if ok else 'FAIL'}  {r:5.2f}:1 (need {need})  {name}  {fg} on {bg}{note}")
-    print(f"{len(PAIRS) - failures}/{len(PAIRS)} pairs pass WCAG 2.1 AA with both colors set by their CSS rules")
+        print(f"{'PASS' if ok else 'FAIL'}  {r:5.2f}:1 (need {need})  {name}  {fg} on {bg}{where}{note}")
+    print(f"{len(PAIRS) - failures}/{len(PAIRS)} pairs pass WCAG 2.1 AA on every background stop, both colors set by their CSS rules")
     return 1 if failures else 0
 
 
