@@ -1,0 +1,8 @@
+- name: Home
+  href: index.md
+- name: Plugins
+  href: plugins.md
+- name: Docs
+  href: docs.md
+- name: Trail
+  href: ../docs/product/trail.md

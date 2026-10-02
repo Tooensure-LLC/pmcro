@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "build": {
+    "content": [
+      {
+        "files": [ "index.md", "plugins.md", "docs.md", "toc.yml" ]
+      },
+      {
+        "src": "../docs",
+        "dest": "docs",
+        "files": [
+          "marketplace.md",
+          "dotagents.md",
+          "offline-kit.md",
+          "imports.md",
+          "product/trail.md",
+          "product/foundations.md",
+          "decisions/*.md"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [ "images/**" ]
+      }
+    ],
+    "output": "_site",
+    "template": [ "default", "modern", "templates/pmcro" ],
+    "globalMetadata": {
+      "_appName": "PMCR-O",
+      "_appTitle": "PMCR-O",
+      "_appFooter": "PMCR-O · Fund The Loop · Status: CANDIDATE",
+      "_appLogoPath": "images/logo.svg",
+      "_appFaviconPath": "images/favicon.svg",
+      "_enableSearch": true,
+      "_disableContribution": true,
+      "_disableBreadcrumb": false,
+      "pdf": false
+    },
+    "disableGitFeatures": true
+  }
+}
