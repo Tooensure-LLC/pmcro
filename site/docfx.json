@@ -3,12 +3,18 @@
   "build": {
     "content": [
       {
-        "files": [ "index.md", "plugins.md", "toc.yml", "docs/index.md", "docs/toc.yml" ]
+        "files": [
+          "index.md",
+          "plugins.md",
+          "toc.yml"
+        ]
       },
       {
         "src": "../docs",
         "dest": "docs",
         "files": [
+          "index.md",
+          "toc.yml",
           "marketplace.md",
           "dotagents.md",
           "offline-kit.md",
@@ -21,12 +27,20 @@
     ],
     "resource": [
       {
-        "files": [ "images/**" ]
+        "files": [
+          "images/**"
+        ]
       }
     ],
     "output": "_site",
-    "template": [ "default", "modern", "templates/pmcro" ],
-    "postProcessors": [ "ExtractSearchIndex" ],
+    "template": [
+      "default",
+      "modern",
+      "templates/pmcro"
+    ],
+    "postProcessors": [
+      "ExtractSearchIndex"
+    ],
     "globalMetadata": {
       "_lang": "en",
       "_appName": "PMCR-O",
@@ -47,13 +61,13 @@
     "fileMetadata": {
       "_disableContribution": {
         "plugins.md": true,
-        "docs/toc.yml": true
+        "../docs/toc.yml": true
       },
       "_description": {
         "plugins.md": "Every plugin in the pmcro-plugins marketplace, with install commands.",
-        "docs/index.md": "PMCR-O documentation: guides, product pages and decision records.",
-        "docs/decisions/*.md": "A numbered PMCR-O architecture decision record: context, decision and consequences.",
-        "docs/product/*.md": "A PMCR-O product page."
+        "../docs/index.md": "PMCR-O documentation: guides, product pages and decision records.",
+        "../docs/decisions/*.md": "A numbered PMCR-O architecture decision record: context, decision and consequences.",
+        "../docs/product/*.md": "A PMCR-O product page."
       }
     }
   }

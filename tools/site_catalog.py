@@ -2,7 +2,7 @@
 
 Writes two files:
   site/plugins.md     the plugin catalog, from .claude-plugin/marketplace.json
-  site/docs/toc.yml   the docs sidebar, from the curated page list in site/docfx.json (titles from each page's first heading)
+  docs/toc.yml        the docs sidebar, from the curated page list in site/docfx.json (titles from each page's first heading)
 
 Usage: python tools/site_catalog.py gen            writes both files
        python tools/site_catalog.py gen --check    exits 1 if either file is stale (CI uses this)
@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / ".claude-plugin" / "marketplace.json"
 OUT = ROOT / "site" / "plugins.md"
 DOCFX = ROOT / "site" / "docfx.json"
-TOC = ROOT / "site" / "docs" / "toc.yml"
+TOC = ROOT / "docs" / "toc.yml"
 
 
 def render():
@@ -76,14 +76,15 @@ def _yaml_str(text):
 
 
 def render_toc():
-    """Return site/docs/toc.yml: the curated docs pages named in site/docfx.json, grouped as guides, product and decisions."""
+    """Return docs/toc.yml (docfx picks a page's sidebar from its source folder): the curated docs pages named in site/docfx.json, grouped as guides, product and decisions."""
     config = json.loads(DOCFX.read_text(encoding="utf-8"))
     entry = next(c for c in config["build"]["content"] if c.get("src") == "../docs")
     src = (DOCFX.parent / entry["src"]).resolve()
     pages = []
     for pattern in entry["files"]:
         pages += sorted(src.glob(pattern)) if any(ch in pattern for ch in "*?[") else [src / pattern]
-    rel = lambda p: "../../docs/" + p.relative_to(src).as_posix()
+    pages = [p for p in pages if p.name not in ("index.md", "toc.yml")]
+    rel = lambda p: p.relative_to(src).as_posix()
     groups = {"Guides": [], "Product": [], "Decision records": []}
     for p in pages:
         key = p.relative_to(src).parts[0]
@@ -114,7 +115,7 @@ def main(argv):
         for p in stale:
             print(f"{p.relative_to(ROOT).as_posix()} is stale; run: python tools/site_catalog.py gen")
         if not stale:
-            print("site/plugins.md and site/docs/toc.yml are up to date")
+            print("site/plugins.md and docs/toc.yml are up to date")
         return 1 if stale else 0
     for p, text in outputs.items():
         p.write_text(text, encoding="utf-8", newline="\n")
