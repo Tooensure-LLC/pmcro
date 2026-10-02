@@ -13,7 +13,7 @@
 /* Light mode: magenta links (AA contrast on white), warm accents. */
 [data-bs-theme="light"] {
   --bs-link-color-rgb: 176, 29, 112;
-  --bs-link-hover-color-rgb: 214, 92, 22;
+  --bs-link-hover-color-rgb: 176, 74, 16;  /* #B04A10: 5.48:1 on white (ADR 0033) */
   --bs-body-color: #1A1A2E;
 }
 
@@ -143,7 +143,7 @@ article table {
 
 .pm-btn-primary {
   background: var(--pm-grad);
-  color: #fff !important;
+  color: #0B1026 !important;  /* navy: at least 4.66:1 on every gradient stop; white was 2.35:1 (ADR 0033) */
   box-shadow: 0 6px 24px rgba(224, 56, 154, .35);
 }
 
@@ -197,7 +197,7 @@ article table {
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--pm-magenta);
+  color: #B01D70;  /* 6.12:1 on the light card; brand magenta was 3.83:1 (ADR 0033) */
 }
 
 [data-bs-theme="dark"] .pm-role .pm-step { color: var(--pm-gold); }
