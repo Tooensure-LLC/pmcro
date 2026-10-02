@@ -427,3 +427,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Trail Player: local-only tiers (never commit)
+.trail-local/
+__pycache__/
+*.pyc

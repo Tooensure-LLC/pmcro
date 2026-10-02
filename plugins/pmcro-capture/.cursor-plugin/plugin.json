@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-capture",
+  "version": "0.1.1",
+  "description": "Turn a captured demonstration (screenshots or photos plus notes) into a draft skill, with private metadata stripped and a human review gate.",
+  "skills": [
+    "./skills/"
+  ]
+}

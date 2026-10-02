@@ -1,0 +1,24 @@
+using Microsoft.EntityFrameworkCore;
+using {{Namespace}}.Application;
+
+namespace {{Namespace}}.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddGenericData(this IServiceCollection services, string databaseName = "app")
+    {
+        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(databaseName)); // swap for your real provider
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+        // A specific repository (I{Name}Repository : IGenericRepository<Name>) replaces the open generic for that model.
+        foreach (var impl in typeof(AppDbContext).Assembly.GetTypes().Where(t => t is { IsClass: true, IsAbstract: false }))
+            foreach (var iface in impl.GetInterfaces().Where(i => i.Name.EndsWith("Repository") && !i.IsGenericType
+                         && i.GetInterfaces().Any(b => b.IsGenericType && b.GetGenericTypeDefinition() == typeof(IGenericRepository<>))))
+            {
+                services.AddScoped(iface, impl);
+                var generic = iface.GetInterfaces().First(b => b.IsGenericType && b.GetGenericTypeDefinition() == typeof(IGenericRepository<>));
+                services.AddScoped(generic, sp => sp.GetRequiredService(iface));
+            }
+        return services;
+    }
+}

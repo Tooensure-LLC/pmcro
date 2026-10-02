@@ -1,0 +1,15 @@
+using Microsoft.EntityFrameworkCore;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Infrastructure;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    // Every concrete BaseEntity in this assembly becomes a table, so adding a model needs no DbSet.
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        foreach (var type in typeof(BaseEntity).Assembly.GetTypes()
+                     .Where(t => t is { IsClass: true, IsAbstract: false } && t.IsSubclassOf(typeof(BaseEntity))))
+            modelBuilder.Entity(type);
+    }
+}

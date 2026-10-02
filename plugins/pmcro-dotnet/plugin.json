@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "pmcro-dotnet",
+  "version": "0.2.0",
+  "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure.",
+  "skills": ["./skills/"]
+}

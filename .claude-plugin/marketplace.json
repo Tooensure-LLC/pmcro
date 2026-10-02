@@ -1,0 +1,223 @@
+{
+  "name": "pmcro-plugins",
+  "owner": {
+    "name": "PMCR-O"
+  },
+  "plugins": [
+    {
+      "name": "pmcro-capture",
+      "source": "./plugins/pmcro-capture",
+      "description": "Turn a captured demonstration (screenshots or photos plus notes) into a draft skill, with private metadata stripped and a human review gate."
+    },
+    {
+      "name": "pmcro-cloudflare",
+      "source": "./plugins/pmcro-cloudflare",
+      "description": "PMCR-O website and landing-page setup on Cloudflare, with affiliate-disclosure checks, trail frames for each step, and deploys gated behind human approval."
+    },
+    {
+      "name": "pmcro-content",
+      "source": "./plugins/pmcro-content",
+      "description": "PMCR-O content creation: scripts in the founder's own voice with sourced claims, and guardrails for synthetic voice and image."
+    },
+    {
+      "name": "pmcro-core",
+      "source": "./plugins/pmcro-core",
+      "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers."
+    },
+    {
+      "name": "pmcro-csuite",
+      "source": "./plugins/pmcro-csuite",
+      "description": "DEPRECATED: use pmcro-seats, which follows the company roster. Imported C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff) kept for reference until the owner decides to remove them."
+    },
+    {
+      "name": "pmcro-dotnet",
+      "source": "./plugins/pmcro-dotnet",
+      "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure."
+    },
+    {
+      "name": "pmcro-figma",
+      "source": "./plugins/pmcro-figma",
+      "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP."
+    },
+    {
+      "name": "pmcro-mcpserver",
+      "source": "./plugins/pmcro-mcpserver",
+      "description": "Generate the company's MCP servers: a read-only server that serves every plugin's skills with progressive disclosure, plus a .NET server generator in the owner's pattern."
+    },
+    {
+      "name": "pmcro-memory",
+      "source": "./plugins/pmcro-memory",
+      "description": "Shared, tiered, append-only memory for the founder and every agent: the company's knowledge, searchable, with provenance and human-owned acceptance."
+    },
+    {
+      "name": "pmcro-seats",
+      "source": "./plugins/pmcro-seats",
+      "description": "Talk to the PMCR-O C-Suite: one read-only agent per company seat (15, generated from company.json), plus skills to ask one seat or convene a round table."
+    },
+    {
+      "name": "pmcro-social",
+      "source": "./plugins/pmcro-social",
+      "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts."
+    },
+    {
+      "name": "pmcro-toggles",
+      "source": "./plugins/pmcro-toggles",
+      "description": "Feature-toggle governance for PMCR-O: every flag in an OpenFeature flags.json has an owner, an expiry and a removal plan, and a read-only check finds expired, orphaned and mistyped flags."
+    },
+    {
+      "name": "pmcro-training",
+      "source": "./plugins/pmcro-training",
+      "description": "Validate and gate PMCR-O fine-tuning datasets (SFT JSONL) against the owner's working schema before any training run."
+    },
+    {
+      "name": "dotnet",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "C# language server (LSP) integration for coding agents and high-level .NET development skills."
+    },
+    {
+      "name": "dotnet-advanced",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-advanced",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Advanced .NET and C# skills for niche scenarios that are not part of the core dotnet plugin."
+    },
+    {
+      "name": "dotnet-data",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-data",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for .NET data access and Entity Framework related tasks."
+    },
+    {
+      "name": "dotnet-diag",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-diag",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for .NET performance investigations, debugging, and incident analysis."
+    },
+    {
+      "name": "dotnet-msbuild",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-msbuild",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Comprehensive MSBuild and .NET build skills: failure diagnosis, performance optimization, code quality, and modernization."
+    },
+    {
+      "name": "dotnet-nuget",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-nuget",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "NuGet and .NET package management: dependency management and modernization."
+    },
+    {
+      "name": "dotnet-upgrade",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-upgrade",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for migrating and upgrading .NET projects across framework versions, language features, and compatibility targets."
+    },
+    {
+      "name": "dotnet-maui",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-maui",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for .NET MAUI development: environment setup, diagnostics, troubleshooting, navigation, data binding, dependency injection, layout, and theming."
+    },
+    {
+      "name": "dotnet-ai",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-ai",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "AI and ML skills for .NET: technology selection, LLM integration, agentic workflows, RAG pipelines, MCP, and classic ML with ML.NET."
+    },
+    {
+      "name": "dotnet-template-engine",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-template-engine",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": ".NET Template Engine skills: template discovery, project scaffolding, and template authoring."
+    },
+    {
+      "name": "dotnet-test",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-test",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for running, generating, analyzing, and improving .NET tests: test execution, filtering, platform detection, coverage, testability, and MSTest workflows."
+    },
+    {
+      "name": "dotnet-test-migration",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-test-migration",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills and an orchestrator agent for migrating .NET test frameworks and platforms: MSTest and xUnit version upgrades, xUnit-to-MSTest conversion, and VSTest to Microsoft.Testing.Platform."
+    },
+    {
+      "name": "dotnet-aspnetcore",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-aspnetcore",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "ASP.NET Core web development skills including middleware, endpoints, real-time communication, and API patterns."
+    },
+    {
+      "name": "dotnet-blazor",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet-blazor",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for Blazor development: component authoring, interactivity, and web application patterns."
+    },
+    {
+      "name": "dotnet11",
+      "source": {
+        "source": "git-subdir",
+        "url": "dotnet/skills",
+        "path": "plugins/dotnet11",
+        "sha": "973cffbcdbae02557cc68ad0d41b8f20d60cfa03"
+      },
+      "description": "Skills for new .NET 11 APIs and language features."
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "name": "pmcro-plugins",
+  "owner": {
+    "name": "PMCR-O"
+  },
+  "plugins": [
+    {
+      "name": "pmcro-capture",
+      "source": "./plugins/pmcro-capture",
+      "description": "Turn a captured demonstration (screenshots or photos plus notes) into a draft skill, with private metadata stripped and a human review gate."
+    },
+    {
+      "name": "pmcro-cloudflare",
+      "source": "./plugins/pmcro-cloudflare",
+      "description": "PMCR-O website and landing-page setup on Cloudflare, with affiliate-disclosure checks, trail frames for each step, and deploys gated behind human approval."
+    },
+    {
+      "name": "pmcro-content",
+      "source": "./plugins/pmcro-content",
+      "description": "PMCR-O content creation: scripts in the founder's own voice with sourced claims, and guardrails for synthetic voice and image."
+    },
+    {
+      "name": "pmcro-core",
+      "source": "./plugins/pmcro-core",
+      "description": "PMCR-O role skills (Orchestrator, Planner, Maker, Checker, Reflector) and the Trail Player for recording direction with disclosure tiers."
+    },
+    {
+      "name": "pmcro-csuite",
+      "source": "./plugins/pmcro-csuite",
+      "description": "DEPRECATED: use pmcro-seats, which follows the company roster. Imported C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff) kept for reference until the owner decides to remove them."
+    },
+    {
+      "name": "pmcro-dotnet",
+      "source": "./plugins/pmcro-dotnet",
+      "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure."
+    },
+    {
+      "name": "pmcro-figma",
+      "source": "./plugins/pmcro-figma",
+      "description": "Template-driven Figma plugins: render a template into code.ts and ui.html, lint it against Figma's authoring rules, then hand the files to Figma's own MCP."
+    },
+    {
+      "name": "pmcro-mcpserver",
+      "source": "./plugins/pmcro-mcpserver",
+      "description": "Generate the company's MCP servers: a read-only server that serves every plugin's skills with progressive disclosure, plus a .NET server generator in the owner's pattern."
+    },
+    {
+      "name": "pmcro-memory",
+      "source": "./plugins/pmcro-memory",
+      "description": "Shared, tiered, append-only memory for the founder and every agent: the company's knowledge, searchable, with provenance and human-owned acceptance."
+    },
+    {
+      "name": "pmcro-seats",
+      "source": "./plugins/pmcro-seats",
+      "description": "Talk to the PMCR-O C-Suite: one read-only agent per company seat (15, generated from company.json), plus skills to ask one seat or convene a round table."
+    },
+    {
+      "name": "pmcro-social",
+      "source": "./plugins/pmcro-social",
+      "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts."
+    },
+    {
+      "name": "pmcro-toggles",
+      "source": "./plugins/pmcro-toggles",
+      "description": "Feature-toggle governance for PMCR-O: every flag in an OpenFeature flags.json has an owner, an expiry and a removal plan, and a read-only check finds expired, orphaned and mistyped flags."
+    },
+    {
+      "name": "pmcro-training",
+      "source": "./plugins/pmcro-training",
+      "description": "Validate and gate PMCR-O fine-tuning datasets (SFT JSONL) against the owner's working schema before any training run."
+    }
+  ]
+}

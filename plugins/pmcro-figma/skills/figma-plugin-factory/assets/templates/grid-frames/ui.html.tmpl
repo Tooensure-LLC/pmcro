@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <script>
+    try {
+      window.localStorage.getItem('x')
+    } catch (e) {
+      const store = new Map()
+      const shim = {
+        getItem: (key) => store.has(key) ? store.get(key) : null,
+        setItem: (key, value) => { store.set(key, String(value)) },
+        removeItem: (key) => { store.delete(key) },
+        clear: () => { store.clear() },
+        key: (index) => Array.from(store.keys())[index] ?? null,
+        get length() { return store.size },
+      }
+      Object.defineProperty(window, 'localStorage', { value: shim, configurable: true })
+    }
+  </script>
+</head>
+<body>
+  <div id="plugin-root">
+    <fig-content>
+      <fig-field><label>Count</label><fig-input-number id="count" value="{{count|int}}" min="{{count_min|int}}" max="{{count_max|int}}"></fig-input-number></fig-field>
+      <fig-field><label>Columns</label><fig-input-number id="columns" value="{{columns|int}}" min="1" max="10"></fig-input-number></fig-field>
+      <fig-field><label>Width</label><fig-input-number id="width" value="{{width|int}}" min="40" max="1000"></fig-input-number></fig-field>
+      <fig-field><label>Height</label><fig-input-number id="height" value="{{height|int}}" min="40" max="1000"></fig-input-number></fig-field>
+      <fig-field><label>Gap</label><fig-input-number id="gap" value="{{gap|int}}" min="0" max="200"></fig-input-number></fig-field>
+      <fig-field><label>Name prefix</label><fig-input-text id="prefix" value="{{prefix|html}}"></fig-input-text></fig-field>
+    </fig-content>
+    <fig-footer>
+      <label id="status">Ready</label>
+      <fig-button id="run" type="submit">Create frames</fig-button>
+    </fig-footer>
+  </div>
+  <script>
+    const post = (message) => parent.postMessage({ pluginMessage: message }, '*')
+    const value = (id) => document.getElementById(id).value
+    document.getElementById('run').addEventListener('click', () => {
+      post({ type: 'run', count: Number(value('count')), columns: Number(value('columns')), width: Number(value('width')), height: Number(value('height')), gap: Number(value('gap')), prefix: String(value('prefix')) })
+    })
+    window.onmessage = (event) => {
+      const message = event.data.pluginMessage
+      if (message && message.type === 'status') document.getElementById('status').textContent = message.text
+    }
+    const root = document.getElementById('plugin-root')
+    new ResizeObserver(() => {
+      post({ type: 'resize', height: Math.ceil(root.getBoundingClientRect().height) })
+    }).observe(root)
+  </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+using System.Text.RegularExpressions;
+
+namespace {{Namespace}}.Configuration;
+
+/// <summary>
+/// The sandbox for this server. Every path an agent supplies is resolved through ResolveAndValidatePath.
+/// Read-only by design: nothing in this server writes, deletes or runs anything.
+/// </summary>
+public sealed class SkillsConfig
+{
+    public string SkillsRoot { get; }
+    public int MaxFileBytes { get; }
+
+    private static readonly string[] TextExtensions = { ".md", ".json", ".yaml", ".yml", ".txt", ".csv", ".xml", ".html", ".ts", ".tmpl" };
+
+    public SkillsConfig(IConfiguration config)
+    {
+        SkillsRoot = Path.GetFullPath(config["Skills:Root"] ?? Path.Combine(Directory.GetCurrentDirectory(), "plugins"));
+        if (SkillsRoot.Contains(".trail-local", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The skills root may not be inside .trail-local (private material).");
+        MaxFileBytes = int.TryParse(config["Skills:MaxFileBytes"], out var n) ? n : 256 * 1024;
+    }
+
+    /// <summary>Resolve a relative path inside the skills root, or throw UnauthorizedAccessException.</summary>
+    public string ResolveAndValidatePath(string relativePath)
+    {
+        relativePath = (relativePath ?? "").TrimStart('/', '\\');
+        var absolute = Path.GetFullPath(Path.Combine(SkillsRoot, relativePath));
+        var prefix = SkillsRoot.EndsWith(Path.DirectorySeparatorChar) ? SkillsRoot : SkillsRoot + Path.DirectorySeparatorChar;
+        var withSlash = absolute.EndsWith(Path.DirectorySeparatorChar) ? absolute : absolute + Path.DirectorySeparatorChar;
+        if (!withSlash.StartsWith(prefix, StringComparison.Ordinal))
+            throw new UnauthorizedAccessException($"Path '{relativePath}' resolves outside the skills root.");
+        // The owner's existing sandbox check does not look for symbolic links; this one does. A link inside the
+        // root could otherwise point outside it.
+        for (var p = new FileInfo(absolute) as FileSystemInfo; p != null && p.FullName.Length > SkillsRoot.Length; p = (p as FileInfo)?.Directory ?? (p as DirectoryInfo)?.Parent)
+        {
+            if (p.LinkTarget != null)
+                throw new UnauthorizedAccessException("Symbolic links are not served.");
+        }
+        return absolute;
+    }
+
+    public bool IsServableTextFile(string absolutePath)
+    {
+        var info = new FileInfo(absolutePath);
+        return info.Exists && info.Length <= MaxFileBytes
+            && TextExtensions.Contains(info.Extension, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Only SKILL.md, references/* and assets/* are served. Scripts never are.</summary>
+    public static bool IsServedRelativePath(string relative) =>
+        relative == "SKILL.md" ||
+        (Regex.IsMatch(relative, @"^(references|assets)/[^/].*$") && !relative.Contains(".."));
+}

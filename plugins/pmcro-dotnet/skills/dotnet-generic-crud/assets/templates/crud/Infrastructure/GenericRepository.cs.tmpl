@@ -1,0 +1,37 @@
+using Microsoft.EntityFrameworkCore;
+using {{Namespace}}.Application;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Infrastructure;
+
+public class GenericRepository<T>(AppDbContext db) : IGenericRepository<T> where T : BaseEntity
+{
+    protected readonly DbSet<T> Set = db.Set<T>();
+
+    public async Task<IReadOnlyList<T>> GetAsync(CancellationToken ct = default) =>
+        await Set.AsNoTracking().ToListAsync(ct);
+
+    public Task<T?> GetAsync(Guid id, CancellationToken ct = default) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
+
+    public async Task<T> AddAsync(T entity, CancellationToken ct = default)
+    {
+        await Set.AddAsync(entity, ct);
+        return entity;
+    }
+
+    public async Task<bool> UpdateAsync(T entity, CancellationToken ct = default)
+    {
+        if (!await Set.AnyAsync(e => e.Id == entity.Id, ct)) return false;
+        Set.Update(entity);
+        return true;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var found = await Set.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (found is null) return false;
+        Set.Remove(found);
+        return true;
+    }
+}

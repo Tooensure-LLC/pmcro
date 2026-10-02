@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-content",
+  "version": "0.1.1",
+  "description": "PMCR-O content creation: scripts in the founder's own voice with sourced claims, and guardrails for synthetic voice and image.",
+  "skills": [
+    "./skills/"
+  ]
+}

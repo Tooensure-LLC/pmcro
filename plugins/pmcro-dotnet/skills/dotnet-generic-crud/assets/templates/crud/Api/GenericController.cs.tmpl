@@ -1,0 +1,47 @@
+using Microsoft.AspNetCore.Mvc;
+using {{Namespace}}.Application;
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Api;
+
+/// <summary>Full CRUD for any model. A concrete controller is one line: it only names the model.</summary>
+[ApiController]
+[Route("api/[controller]")]
+public abstract class GenericController<T>(IGenericRepository<T> repository, IUnitOfWork unitOfWork) : ControllerBase
+    where T : BaseEntity
+{
+    [HttpGet]
+    [ActionName("GetAll")]
+    public async Task<IActionResult> GetAll(CancellationToken ct) => Ok(await repository.GetAsync(ct));
+
+    [HttpGet("{id:guid}")]
+    [ActionName("GetById")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct) =>
+        await repository.GetAsync(id, ct) is { } found ? Ok(found) : NotFound();
+
+    [HttpPost]
+    public async Task<IActionResult> Post(T entity, CancellationToken ct)
+    {
+        entity.Id = Guid.NewGuid(); // the server owns ids
+        await repository.AddAsync(entity, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        return CreatedAtAction("GetById", new { id = entity.Id }, entity);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Put(Guid id, T entity, CancellationToken ct)
+    {
+        entity.Id = id;
+        if (!await repository.UpdateAsync(entity, ct)) return NotFound();
+        await unitOfWork.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        if (!await repository.DeleteAsync(id, ct)) return NotFound();
+        await unitOfWork.SaveChangesAsync(ct);
+        return NoContent();
+    }
+}

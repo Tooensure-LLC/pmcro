@@ -1,0 +1,52 @@
+using System.Net.Http.Headers;
+using System.Text;
+
+namespace {{Namespace}}.Configuration;
+
+/// <summary>
+/// The only code that talks to {{Platform}}. Rules it enforces for every generated tool:
+/// identity is injected at call time from an environment variable and never stored or logged;
+/// write operations are refused unless Platform__AllowWrites=true is set for this run;
+/// the base URL must be https (plain http only for localhost, for tests).
+/// </summary>
+public sealed class PlatformClient(IHttpClientFactory factory, IConfiguration config)
+{
+    private const int MaxChars = 8000;
+
+    public async Task<string> CallAsync(string method, string path, Dictionary<string, string?> pathParams,
+        Dictionary<string, string?> query, string? body, bool write)
+    {
+        if (write && !string.Equals(config["Platform:AllowWrites"], "true", StringComparison.OrdinalIgnoreCase))
+            return "refused: write operations are disabled. The owner enables them for a run with Platform__AllowWrites=true.";
+
+        var baseUrl = Environment.GetEnvironmentVariable("{{BaseUrlEnv}}");
+        if (string.IsNullOrWhiteSpace(baseUrl)) return "refused: {{BaseUrlEnv}} is not set";
+        if (!Uri.TryCreate(baseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var root)) return "refused: {{BaseUrlEnv}} is not a URL";
+        if (root.Scheme != Uri.UriSchemeHttps && !(root.IsLoopback && root.Scheme == Uri.UriSchemeHttp))
+            return "refused: the base URL must be https";
+
+        foreach (var (name, value) in pathParams)
+        {
+            if (value is "." or "..") return "refused: a path parameter may not be . or ..";
+            path = path.Replace("{" + name + "}", Uri.EscapeDataString(value ?? ""));
+        }
+        if (path.Contains('{')) return "refused: a path parameter is missing";
+
+        var qs = string.Join("&", query.Where(p => !string.IsNullOrEmpty(p.Value))
+            .Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value!)}"));
+        var url = new Uri(root, path.TrimStart('/') + (qs.Length > 0 ? "?" + qs : ""));
+        // Never follow a path out of the configured host.
+        if (!string.Equals(url.Host, root.Host, StringComparison.OrdinalIgnoreCase)) return "refused: host mismatch";
+
+        using var request = new HttpRequestMessage(new HttpMethod(method), url);
+        var token = Environment.GetEnvironmentVariable("{{TokenEnv}}");
+        if (!string.IsNullOrEmpty(token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (body is not null) request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        using var response = await factory.CreateClient().SendAsync(request);
+        var text = await response.Content.ReadAsStringAsync();
+        if (text.Length > MaxChars) text = text[..MaxChars] + "...[truncated]";
+        return $"status {(int)response.StatusCode}\n{text}";
+    }
+}

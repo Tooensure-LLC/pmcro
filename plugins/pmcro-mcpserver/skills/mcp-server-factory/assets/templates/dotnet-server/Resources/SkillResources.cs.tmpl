@@ -1,0 +1,82 @@
+using System.ComponentModel;
+using System.Text.Json;
+using ModelContextProtocol.Server;
+using {{Namespace}}.Configuration;
+
+namespace {{Namespace}}.Resources;
+
+/// <summary>
+/// Skills as MCP resources: skill://index.json lists them, skill://NAME/SKILL.md returns a body, and
+/// skill://NAME/references/FILE returns supporting text on demand. This is the convention MAF's
+/// MCPSkillsSource reads. The templated UriTemplate forms below follow the SDK's documented
+/// pattern. This repository's CI compiles them and runs a smoke test against the running server (tests/smoke_dotnet_server.py).
+/// </summary>
+[McpServerResourceType]
+public sealed class SkillResources(SkillsConfig config)
+{
+    private IEnumerable<(string Plugin, string Skill, string Path)> Scan()
+    {
+        foreach (var plugin in Directory.GetDirectories(config.SkillsRoot))
+        {
+            var skillsDir = Path.Combine(plugin, "skills");
+            if (!Directory.Exists(skillsDir)) continue;
+            foreach (var skill in Directory.GetDirectories(skillsDir))
+            {
+                var md = Path.Combine(skill, "SKILL.md");
+                if (File.Exists(md)) yield return (Path.GetFileName(plugin), Path.GetFileName(skill), md);
+            }
+        }
+    }
+
+    private static string Field(string markdown, string key)
+    {
+        var lines = markdown.Replace("\r\n", "\n").Split('\n');
+        if (lines.Length == 0 || lines[0].Trim() != "---") return "";
+        for (var i = 1; i < lines.Length && lines[i].Trim() != "---"; i++)
+        {
+            if (!lines[i].StartsWith(key + ":")) continue;
+            var value = lines[i][(key.Length + 1)..].Trim();
+            if (value is ">" or ">-" or "|" or "|-")
+            {   // folded or literal block: join the indented lines that follow
+                var parts = new List<string>();
+                for (var j = i + 1; j < lines.Length && lines[j].StartsWith(' '); j++) parts.Add(lines[j].Trim());
+                return string.Join(' ', parts);
+            }
+            return value.Trim('"', '\'');
+        }
+        return "";
+    }
+
+    [McpServerResource(UriTemplate = "skill://index.json", Name = "SkillIndex", Title = "Skill index", MimeType = "application/json")]
+    [Description("Lists every skill: name, type skill-md, description and the url of its SKILL.md.")]
+    public string Index()
+    {
+        var entries = Scan()
+            .Select(s => new { s.Skill, Text = File.ReadAllText(s.Path) })
+            .Select(s => new { name = s.Skill, type = "skill-md", description = Field(s.Text, "description"), url = $"skill://{s.Skill}/SKILL.md" })
+            .OrderBy(e => e.name);
+        return JsonSerializer.Serialize(new { skills = entries }, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    [McpServerResource(UriTemplate = "skill://{skill}/SKILL.md", Name = "SkillBody", Title = "Skill body", MimeType = "text/markdown")]
+    [Description("The SKILL.md of one skill.")]
+    public string Body(string skill)
+    {
+        var hit = Scan().FirstOrDefault(s => s.Skill == skill);
+        if (hit.Path is null) throw new ArgumentException("unknown skill");
+        var path = config.ResolveAndValidatePath(Path.GetRelativePath(config.SkillsRoot, hit.Path));
+        return config.IsServableTextFile(path) ? File.ReadAllText(path) : throw new ArgumentException("not servable");
+    }
+
+    [McpServerResource(UriTemplate = "skill://{skill}/{kind}/{name}", Name = "SkillFile", Title = "Skill supporting file", MimeType = "text/plain")]
+    [Description("A references/ or assets/ file of one skill, loaded only when needed.")]
+    public string File1(string skill, string kind, string name)
+    {
+        var relative = $"{kind}/{name}";
+        if (!SkillsConfig.IsServedRelativePath(relative)) throw new ArgumentException("only references and assets are served");
+        var hit = Scan().FirstOrDefault(s => s.Skill == skill);
+        if (hit.Path is null) throw new ArgumentException("unknown skill");
+        var path = config.ResolveAndValidatePath(Path.GetRelativePath(config.SkillsRoot, Path.Combine(Path.GetDirectoryName(hit.Path)!, relative)));
+        return config.IsServableTextFile(path) ? File.ReadAllText(path) : throw new ArgumentException("not servable");
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-memory",
+  "version": "0.3.0",
+  "description": "Shared, tiered, append-only memory for the founder and every agent: the company's knowledge, searchable, with provenance and human-owned acceptance.",
+  "skills": [
+    "./skills/"
+  ]
+}

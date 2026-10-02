@@ -1,0 +1,23 @@
+// {{Namespace}}: MCP server that wraps the {{Platform}} HTTP API. Generated from a spec; edit the spec, not this file.
+// Layout follows the owner's MCP servers: Configuration, Tools, stateless HTTP, MapMcp("/mcp").
+
+using {{Namespace}}.Configuration;
+using {{Namespace}}.Tools;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<PlatformClient>();
+builder.Services.AddSingleton<PlatformTools>();
+
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport(options => { options.Stateless = true; })
+    .WithTools<PlatformTools>();
+
+var app = builder.Build();
+
+app.MapMcp("/mcp");
+app.MapGet("/healthz", () => Results.Ok(new { service = "{{Namespace}}", status = "ok" }));
+
+app.Run();

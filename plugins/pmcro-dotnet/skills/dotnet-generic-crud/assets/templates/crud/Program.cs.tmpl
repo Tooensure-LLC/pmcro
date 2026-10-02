@@ -1,0 +1,14 @@
+using Scalar.AspNetCore;
+using {{Namespace}}.Infrastructure;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
+builder.Services.AddGenericData();
+
+var app = builder.Build();
+app.MapOpenApi();
+app.MapScalarApiReference(); // interactive API reference at /scalar
+app.MapControllers();
+app.MapGet("/healthz", () => "ok");
+app.Run();

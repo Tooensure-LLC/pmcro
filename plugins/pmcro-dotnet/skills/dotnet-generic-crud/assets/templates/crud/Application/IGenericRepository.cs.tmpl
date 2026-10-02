@@ -1,0 +1,13 @@
+using {{Namespace}}.Domain;
+
+namespace {{Namespace}}.Application;
+
+/// <summary>CRUD for any model. Because T is a BaseEntity, every T has an Id, so Get-by-id works for all of them.</summary>
+public interface IGenericRepository<T> where T : BaseEntity
+{
+    Task<IReadOnlyList<T>> GetAsync(CancellationToken ct = default);
+    Task<T?> GetAsync(Guid id, CancellationToken ct = default);
+    Task<T> AddAsync(T entity, CancellationToken ct = default);
+    Task<bool> UpdateAsync(T entity, CancellationToken ct = default);
+    Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+}

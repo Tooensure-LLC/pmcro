@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "pmcro-csuite",
+  "version": "0.2.0",
+  "description": "DEPRECATED: use pmcro-seats, which follows the company roster. Imported C-Suite domain skills (CEO, CFO, COO, CTO, CMO, CRO, CHRO, CLO, Chief of Staff) kept for reference until the owner decides to remove them.",
+  "skills": ["./skills/"]
+}

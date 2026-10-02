@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-social",
+  "version": "0.1.0",
+  "description": "PMCR-O account operations: a credential-free registry of the founder's accounts, a weekly brief of what needs a human, and rules for drafting and approving posts.",
+  "skills": [
+    "./skills/"
+  ]
+}

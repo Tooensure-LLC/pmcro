@@ -1,0 +1,134 @@
+name: ci
+
+# Deterministic only: no model calls, no secrets, no cost. LLM evals are a separate,
+# manual job (see docs/marketplace.md) so CI never spends Grok or any other credits.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned dependencies
+        run: pip install pyyaml==6.0.2 agent-framework==1.19.0 mcp==1.28.1
+      - name: Validate plugins, skills and generated adapters
+        run: python tools/pmcro.py validate
+      - name: Seat agents equal what tools/seats.py generates
+        run: python tools/seats.py gen --check
+      - name: Run tests (validator must-fail cases, MAF progressive disclosure, trail guards)
+        run: python -m unittest discover -s tests -v
+      - name: Confirm MAF can reach every skill
+        run: |
+          for d in plugins/*/skills; do
+            python plugins/pmcro-dotnet/skills/maf-local-skills/scripts/list_skills.py "$d"
+          done
+
+  seat-drift:
+    # The company repo is private. This job reads it only when the owner has added a read-only token as the
+    # COMPANY_REPO_TOKEN secret; without it the job reports that it was skipped and passes (ADR 0029).
+    runs-on: ubuntu-latest
+    env:
+      COMPANY_REPO_TOKEN: ${{ secrets.COMPANY_REPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skipped without a token
+        if: env.COMPANY_REPO_TOKEN == ''
+        run: echo "::notice::seat-drift skipped; COMPANY_REPO_TOKEN is not set"
+      - uses: actions/checkout@v4
+        if: env.COMPANY_REPO_TOKEN != ''
+        with:
+          repository: Tooensure-LLC/pmcro-company
+          token: ${{ secrets.COMPANY_REPO_TOKEN }}
+          path: company
+      - name: Seats snapshot still matches company.json
+        if: env.COMPANY_REPO_TOKEN != ''
+        run: python tools/seats.py drift company/company.json
+
+  dotnet-server:
+    # Compiles the generated .NET MCP server, so "not compiled" stops being true or is shown to be false.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Generate the server
+        run: python plugins/pmcro-mcpserver/skills/mcp-server-factory/scripts/generate_dotnet_server.py --name Pmcro.Mcp.Skills --out "$RUNNER_TEMP/server"
+      - name: Build it
+        run: dotnet build "$RUNNER_TEMP/server" -c Release
+      - name: Install the Python MCP client and MAF
+        run: pip install pyyaml==6.0.2 agent-framework==1.19.0 mcp==1.28.1
+      - name: Start the server and smoke-test it with a real MCP client
+        run: |
+          export Skills__Root="$GITHUB_WORKSPACE/plugins"
+          dotnet "$RUNNER_TEMP/server/bin/Release/net10.0/Pmcro.Mcp.Skills.dll" --urls http://127.0.0.1:5099 > "$RUNNER_TEMP/server.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5099/healthz && break || sleep 1; done
+          python tests/smoke_dotnet_server.py http://127.0.0.1:5099/mcp 20 || { echo "--- server log ---"; cat "$RUNNER_TEMP/server.log"; exit 1; }
+
+  dotnet-crud:
+    # Compiles the generic CRUD scaffold and exercises it over HTTP (base entity, generic repository, unit of work, generic controller).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Scaffold
+        run: python plugins/pmcro-dotnet/skills/dotnet-generic-crud/scripts/scaffold_crud.py --out "$RUNNER_TEMP/crud" --namespace Acme.Shop --entity "User:Name=string,Email=string,Age=int?" --entity "Order:Total=decimal"
+      - name: Build
+        run: dotnet build "$RUNNER_TEMP/crud" -c Release
+      - name: Run and smoke-test
+        run: |
+          dotnet "$RUNNER_TEMP/crud/bin/Release/net10.0/Acme.Shop.dll" --urls http://127.0.0.1:5098 > "$RUNNER_TEMP/crud.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:5098/healthz && break || sleep 1; done
+          python tests/smoke_crud_server.py http://127.0.0.1:5098 Users || { cat "$RUNNER_TEMP/crud.log"; exit 1; }
+          curl -sf http://127.0.0.1:5098/openapi/v1.json > /dev/null
+          curl -sf http://127.0.0.1:5098/scalar > /dev/null
+
+  platform-mcp:
+    # Generates a platform-wrapping MCP server from the example spec, builds it and exercises it against a fake API.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Generate
+        run: python plugins/pmcro-mcpserver/skills/platform-api-mcp/scripts/generate_platform_mcp.py --spec plugins/pmcro-mcpserver/skills/platform-api-mcp/assets/examples/example-api.json --out "$RUNNER_TEMP/pmcp"
+      - name: Build
+        run: dotnet build "$RUNNER_TEMP/pmcp" -c Release
+      - name: Convert the example OpenAPI file, generate and build that server too
+        run: |
+          D=plugins/pmcro-mcpserver/skills/platform-api-mcp
+          python $D/scripts/openapi_to_spec.py --openapi $D/assets/examples/example-openapi.json --name Pmcro.Mcp.Shop --platform "Example Shop" --base-url-env SHOP_BASE_URL --token-env SHOP_TOKEN --include-writes --out "$RUNNER_TEMP/shop-spec.json"
+          python $D/scripts/generate_platform_mcp.py --spec "$RUNNER_TEMP/shop-spec.json" --out "$RUNNER_TEMP/shop"
+          dotnet build "$RUNNER_TEMP/shop" -c Release
+      - name: Install the Python MCP client
+        run: pip install mcp==1.28.1
+      - name: Run against the fake API (writes disabled, then enabled)
+        run: |
+          python tests/fixtures/fake_platform_api.py 5095 &
+          export EXAMPLE_API_BASE_URL=http://127.0.0.1:5095 EXAMPLE_API_TOKEN=test-token
+          dotnet "$RUNNER_TEMP/pmcp/bin/Release/net10.0/Pmcro.Mcp.ExampleApi.dll" --urls http://127.0.0.1:5097 > "$RUNNER_TEMP/denied.log" 2>&1 &
+          Platform__AllowWrites=true dotnet "$RUNNER_TEMP/pmcp/bin/Release/net10.0/Pmcro.Mcp.ExampleApi.dll" --urls http://127.0.0.1:5096 > "$RUNNER_TEMP/allowed.log" 2>&1 &
+          for p in 5097 5096; do for i in $(seq 1 30); do curl -sf http://127.0.0.1:$p/healthz && break || sleep 1; done; done
+          python tests/smoke_platform_mcp.py http://127.0.0.1:5097/mcp denied || { cat "$RUNNER_TEMP/denied.log"; exit 1; }
+          python tests/smoke_platform_mcp.py http://127.0.0.1:5096/mcp allowed || { cat "$RUNNER_TEMP/allowed.log"; exit 1; }

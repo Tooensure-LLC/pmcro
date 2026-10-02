@@ -1,0 +1,8 @@
+{
+  "name": "pmcro-dotnet",
+  "version": "0.2.0",
+  "description": "PMCR-O .NET and Microsoft Agent Framework skills, built so small local models can use them through progressive disclosure.",
+  "skills": [
+    "./skills/"
+  ]
+}

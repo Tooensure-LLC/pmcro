@@ -1,0 +1,409 @@
+#!/usr/bin/env python3
+"""PMCR-O plugin tooling.
+
+  python tools/pmcro.py validate     check plugins, skills and adapters (CI gate)
+  python tools/pmcro.py gen          regenerate vendor adapters from plugins/*/plugin.json
+  python tools/pmcro.py gen --check  fail if generated files differ (never writes)
+  python tools/pmcro.py new-plugin NAME --description D [--skill S --skill-description SD]
+                                     scaffold a plugin that already satisfies every rule below
+
+Source of truth: plugins/<name>/plugin.json and plugins/<name>/skills/*/SKILL.md.
+Everything under .claude-plugin/, .cursor-plugin/, .codex-plugin/, .github/plugin/ and
+.agents/plugins/ is generated and disposable.
+"""
+import hashlib, json, pathlib, re, sys
+import yaml
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+PLUGINS = ROOT / "plugins"
+MARKETPLACE = "pmcro-plugins"
+OWNER = {"name": "PMCR-O"}
+SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+# Official/impersonating names are refused by hosts; never use them.
+RESERVED = re.compile(r"claude|anthropic|grok|copilot|codex|agent-skills|agentskills", re.I)
+SPEC_KEYS = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+SECRET = re.compile(r"sk-[A-Za-z0-9]{20,}|xai-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY")
+ABS_PATH = re.compile(r"(?<![\w.])(/home/|/root/|/Users/|[A-Z]:\\\\)")
+LINK = re.compile(r"`((?:references|scripts|assets)/[^`\s]+)`|\]\(((?:references|scripts|assets)/[^)\s]+)\)")
+
+
+def plugin_dirs():
+    return sorted(p for p in PLUGINS.iterdir() if (p / "plugin.json").is_file())
+
+
+def split_frontmatter(text):
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    return (yaml.safe_load(m.group(1)), text[m.end():]) if m else (None, text)
+
+
+def check_skill(d, errors):
+    f = d / "SKILL.md"
+    where = f.relative_to(ROOT)
+    if not f.is_file():
+        errors.append(f"{where}: missing")
+        return
+    text = f.read_text()
+    fm, body = split_frontmatter(text)
+    if not isinstance(fm, dict):
+        errors.append(f"{where}: no YAML frontmatter")
+        return
+    extra = set(fm) - SPEC_KEYS
+    if extra:
+        errors.append(f"{where}: non-spec frontmatter keys {sorted(extra)}")
+    name, desc = fm.get("name"), fm.get("description")
+    if name != d.name:
+        errors.append(f"{where}: name {name!r} must equal directory {d.name!r}")
+    if not isinstance(name, str) or not (1 <= len(name) <= 64) or not NAME_RE.match(name):
+        errors.append(f"{where}: invalid name")
+    if not isinstance(desc, str) or not (1 <= len(desc) <= 1024):
+        errors.append(f"{where}: description must be 1-1024 chars")
+    if "metadata" in fm and not (isinstance(fm["metadata"], dict) and all(isinstance(v, str) for v in fm["metadata"].values())):
+        errors.append(f"{where}: metadata must be a string map")
+    n = text.count("\n") + 1
+    if n > 500:
+        errors.append(f"{where}: {n} lines, limit 500")
+    if SECRET.search(text):
+        errors.append(f"{where}: credential-shaped text")
+    for ref in {a or b for a, b in LINK.findall(body)}:
+        if any(c in ref for c in "<>*"):  # placeholder in prose, not a link
+            continue
+        if ".." in ref or not (d / ref).exists():  # a directory link is fine when it exists
+            errors.append(f"{where}: referenced file {ref} missing or outside skill")
+    for sub in ("references", "scripts", "assets"):
+        base = d / sub
+        if base.is_dir():
+            for p in base.rglob("*"):
+                if p.is_symlink():
+                    errors.append(f"{p.relative_to(ROOT)}: symlink not allowed")
+                if p.is_file() and not p.is_symlink() and sub == "references" and len(p.relative_to(base).parts) > 1:
+                    errors.append(f"{p.relative_to(ROOT)}: references must be one level deep")
+                if p.is_file() and p.suffix in {".md", ".py", ".json", ".txt", ".yaml", ".yml"}:
+                    t = p.read_text(errors="ignore")
+                    if SECRET.search(t):
+                        errors.append(f"{p.relative_to(ROOT)}: credential-shaped text")
+                    if ABS_PATH.search(t):
+                        errors.append(f"{p.relative_to(ROOT)}: absolute path")
+
+
+SOFT_LINES = 150  # AGENTS.md aims for this so small local models cope; the hard limit (500) is an error elsewhere
+SOFT_TOKENS = 5000  # the Agent Skills spec recommends under 5000 tokens for the body; estimated as characters / 4
+
+
+def long_skills():
+    """Skills whose SKILL.md is over the soft size targets: (path, lines, estimated tokens). Warnings only."""
+    out = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            text = f.read_text()
+            lines, tokens = text.count("\n") + 1, len(text) // 4
+            if lines > SOFT_LINES or tokens > SOFT_TOKENS:
+                out.append((f.parent.relative_to(ROOT), lines, tokens))
+    return out
+
+
+def flat_skills():
+    """Skills with none of references/, scripts/, assets/: prose-only, so a small model must guess the flow."""
+    out = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            if not any((f.parent / sub).is_dir() for sub in ("references", "scripts", "assets")):
+                out.append(f.parent.relative_to(ROOT))
+    return out
+
+
+OUTSIDE = re.compile(r"`(\.\./[^`\s]+)`")
+
+
+def outside_links():
+    found = []
+    for p in plugin_dirs():
+        for f in sorted((p / "skills").glob("*/SKILL.md")):
+            n = len(OUTSIDE.findall(f.read_text()))
+            if n:
+                found.append((f.parent.relative_to(ROOT), n))
+    return found
+
+
+def load_plugin(p, errors):
+    where = (p / "plugin.json").relative_to(ROOT)
+    try:
+        m = json.loads((p / "plugin.json").read_text())
+    except json.JSONDecodeError as e:
+        errors.append(f"{where}: invalid JSON ({e})")
+        return None
+    if m.get("$schema") != SCHEMA:
+        errors.append(f"{where}: $schema must be {SCHEMA}")
+    if m.get("name") != p.name or not NAME_RE.match(str(m.get("name", ""))):
+        errors.append(f"{where}: name must equal directory {p.name!r}")
+    if RESERVED.search(str(m.get("name", ""))):
+        errors.append(f"{where}: reserved or impersonating name")
+    if not SEMVER.match(str(m.get("version", ""))):
+        errors.append(f"{where}: version must be explicit semver")
+    if not m.get("description"):
+        errors.append(f"{where}: description required")
+    for s in m.get("skills", []):
+        if not s.startswith("./") or ".." in s or not (p / s).is_dir():
+            errors.append(f"{where}: skills path {s!r} must start with ./ and exist inside the plugin")
+    return m
+
+
+def docstring(path):
+    import ast
+    try:
+        return ast.get_docstring(ast.parse(path.read_text())) or ""
+    except SyntaxError:
+        return ""
+
+
+def check_docs(errors):
+    """Documentation law: every plugin, script and decision is documented, and docs stay in step."""
+    for p in plugin_dirs():
+        m = json.loads((p / "plugin.json").read_text())
+        rd, cl = p / "README.md", p / "CHANGELOG.md"
+        rel = p.relative_to(ROOT)
+        if not rd.is_file():
+            errors.append(f"{rel}: README.md required (purpose, ## Skills, ## Install, ## Status)")
+        else:
+            text = rd.read_text()
+            for h in ("## Skills", "## Install", "## Status"):
+                if h not in text:
+                    errors.append(f"{rel}/README.md: missing section {h!r}")
+            for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
+                if sk.is_dir() and sk.name not in text:
+                    errors.append(f"{rel}/README.md: skill {sk.name!r} is not documented")
+        if not cl.is_file() or f"## {m.get('version')}" not in cl.read_text():
+            errors.append(f"{rel}/CHANGELOG.md: needs a '## {m.get('version')}' entry for the current version")
+        for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
+            if not sk.is_dir():
+                continue
+            body = "".join(f.read_text(errors="ignore") for f in [sk / "SKILL.md", *sk.glob("references/*.md")] if f.is_file())
+            for s in sorted((sk / "scripts").glob("*.py")) if (sk / "scripts").is_dir() else []:
+                if len([ln for ln in docstring(s).splitlines() if ln.strip()]) < 2:
+                    errors.append(f"{s.relative_to(ROOT)}: module docstring needs at least 2 lines (purpose, usage)")
+                if s.name not in body:
+                    errors.append(f"{s.relative_to(ROOT)}: script is not mentioned in its skill's SKILL.md or references")
+    for s in sorted((ROOT / "tools").glob("*.py")):
+        if len([ln for ln in docstring(s).splitlines() if ln.strip()]) < 2:
+            errors.append(f"{s.relative_to(ROOT)}: module docstring needs at least 2 lines (purpose, usage)")
+    for need in ("README.md", "AGENTS.md", "docs/README.md"):
+        if not (ROOT / need).is_file():
+            errors.append(f"{need}: required")
+    idx = (ROOT / "docs/README.md")
+    if idx.is_file():
+        for f in sorted((ROOT / "docs").rglob("*.md")):
+            if f != idx and f.name not in idx.read_text():
+                errors.append(f"docs/README.md: does not link {f.relative_to(ROOT / 'docs')}")
+
+
+# The owner's personal name must not appear anywhere in the application (ADR 0024). The forbidden words are stored
+# only as SHA-256 hashes, so this file does not contain the name. Hashes of short words can be guessed; the aim is that
+# the name is not written in the application's text, not that it is secret.
+FORBIDDEN_NAME_HASHES = frozenset({
+    "145a4f7dd456a8f7fc7cc92421e24964e743873f15fa142e01ca886d264a3810",
+    "550bd1be9152443d76b9995b12f6a034de37b25a9a8e31461cb8a10fa7a903e2",
+    "5abd8a7b95a7e6e8726ac33244d9f24f5b78070296d21bf1cd37ef5e2a68d778",
+    "a30a997579a6d8733555003b7cc698864186fb708731dfdcd14c5e0a22a945e9",
+    "aff16ac54a0bf21df79a3520ebb5d26ddfed0f3b2ffbd434a566895e87e8259a",
+})
+SKIP_DIRS = {".git", ".trail-local", "__pycache__", "node_modules", ".venv"}
+
+
+def name_tokens(text):
+    out = set()
+    for token in re.findall(r"[A-Za-z0-9]+", text):
+        low = token.lower()
+        out.add(low)
+        out.update(x.lower() for x in re.findall(r"[A-Za-z]+", token))                      # letter runs: name2024name
+        out.update(x.lower() for x in re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", token))   # camelCase humps
+    return out
+
+
+def text_has_forbidden_name(text):
+    return any(hashlib.sha256(t.encode()).hexdigest() in FORBIDDEN_NAME_HASHES for t in name_tokens(text))
+
+
+def check_names(errors):
+    for f in sorted(ROOT.rglob("*")):
+        if not f.is_file() or SKIP_DIRS & set(f.relative_to(ROOT).parts) or f.stat().st_size > 2_000_000:
+            continue
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        if text_has_forbidden_name(text) or text_has_forbidden_name(f.name):
+            errors.append(f"{f.relative_to(ROOT)}: contains a forbidden personal name (ADR 0024)")
+
+
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def upstreams():
+    f = ROOT / "upstream.json"
+    return json.loads(f.read_text())["upstreams"] if f.is_file() else []
+
+
+def check_upstreams(errors):
+    local = {p.name for p in plugin_dirs()}
+    seen = set()
+    for u in upstreams():
+        n = u.get("name", "?")
+        if not NAME_RE.match(str(n)) or RESERVED.search(str(n)):
+            errors.append(f"upstream.json: bad or reserved name {n!r}")
+        if n in seen or n in local:
+            errors.append(f"upstream.json: duplicate plugin name {n!r}")
+        seen.add(n)
+        if not SHA40.match(str(u.get("sha", ""))):
+            errors.append(f"upstream.json: {n} sha must be a full 40-character lowercase commit, not a branch or tag")
+        if not re.match(r"^[\w.-]+/[\w.-]+$", str(u.get("repo", ""))):
+            errors.append(f"upstream.json: {n} repo must be owner/repo")
+        if not u.get("path") or ".." in u["path"] or u["path"].startswith("/"):
+            errors.append(f"upstream.json: {n} path must be a relative subdirectory")
+
+
+def generated():
+    """Return {relative path: content} for every generated file."""
+    out = {}
+    entries = []
+    for p in plugin_dirs():
+        m = json.loads((p / "plugin.json").read_text())
+        rel = f"plugins/{p.name}"
+        entries.append({"name": m["name"], "source": f"./{rel}", "description": m["description"]})
+        claude = {k: v for k, v in m.items() if k != "$schema"}  # Claude strips unknown keys with a warning
+        for sub in (".claude-plugin", ".cursor-plugin", ".codex-plugin"):
+            out[f"{rel}/{sub}/plugin.json"] = json.dumps(claude, indent=2) + "\n"
+    market = json.dumps({"name": MARKETPLACE, "owner": OWNER, "plugins": entries}, indent=2) + "\n"
+    # Pinned upstream entries use the git-subdir source, documented for Claude Code only
+    # (code.claude.com marketplace-reference). Other hosts get local plugins only until verified.
+    claude_entries = entries + [
+        {"name": u["name"], "source": {"source": "git-subdir", "url": u["repo"], "path": u["path"], "sha": u["sha"]},
+         "description": u["description"]} for u in upstreams()]
+    claude_market = json.dumps({"name": MARKETPLACE, "owner": OWNER, "plugins": claude_entries}, indent=2) + "\n"
+    out[".claude-plugin/marketplace.json"] = claude_market
+    for path in (".cursor-plugin/marketplace.json", ".github/plugin/marketplace.json"):
+        out[path] = market
+    # Codex layout is from secondary sources; unverified. Keep it identical in shape until checked.
+    out[".agents/plugins/marketplace.json"] = market
+    return out
+
+
+def cmd_gen(check):
+    bad = []
+    for rel, content in generated().items():
+        path = ROOT / rel
+        if check:
+            if not path.is_file() or path.read_text() != content:
+                bad.append(rel)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+    if check and bad:
+        print("generated files out of date (run: python tools/pmcro.py gen):\n  " + "\n  ".join(bad))
+        return 1
+    print("adapters up to date" if check else f"wrote {len(generated())} files")
+    return 0
+
+
+def _load_scaffold_skill():
+    """Load the new-skill script, so a plugin's first skill is made from the same single template as every later one."""
+    import importlib.util
+    path = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pmcro-core" / "skills" / "new-skill" / "scripts" / "scaffold_skill.py"
+    spec = importlib.util.spec_from_file_location("scaffold_skill", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def cmd_new_plugin(name, description, skill, skill_description):
+    """Scaffold plugins/<name>/ with manifest, README, CHANGELOG and one skill, then regenerate adapters."""
+    if not NAME_RE.match(name) or RESERVED.search(name):
+        print(f"refused: {name!r} must be kebab-case and not contain a reserved word")
+        return 2
+    dest = PLUGINS / name
+    if dest.exists():
+        print(f"refused: {dest.relative_to(ROOT)} already exists")
+        return 2
+    if not NAME_RE.match(skill) or not (1 <= len(skill_description) <= 1024):
+        print("refused: skill must be kebab-case and its description 1-1024 characters")
+        return 2
+    dest.mkdir(parents=True)
+    (dest / "plugin.json").write_text(json.dumps({"$schema": SCHEMA, "name": name, "version": "0.1.0",
+                                                   "description": description, "skills": ["./skills/"]}, indent=2) + "\n")
+    (dest / "README.md").write_text(f"""# {name}
+
+{description}
+
+## Skills
+
+| Skill | Use it to |
+| --- | --- |
+
+## Install
+
+```
+/plugin install {name}@{MARKETPLACE}
+```
+
+## Status
+
+CANDIDATE. Scaffolded; nothing here is tested yet. Replace this line with what was and was NOT verified.
+""")
+    (dest / "CHANGELOG.md").write_text(f"# Changelog: {name}\n\n## 0.1.0\n\n- Scaffolded with `tools/pmcro.py new-plugin`.\n")
+    scaffold = _load_scaffold_skill()
+    try:
+        scaffold.scaffold(PLUGINS, name, skill, skill_description)
+    except scaffold.Refused as e:
+        print(f"refused: {e}")
+        return 2
+    cmd_gen(check=False)
+    print(f"created {dest.relative_to(ROOT)}; fill the TODOs, then run: python tools/pmcro.py validate")
+    return 0
+
+
+def cmd_validate():
+    errors = []
+    names = set()
+    for p in plugin_dirs():
+        m = load_plugin(p, errors)
+        if m:
+            names.add(m["name"])
+        for sk in sorted((p / "skills").iterdir()) if (p / "skills").is_dir() else []:
+            if sk.is_dir():
+                check_skill(sk, errors)
+    check_upstreams(errors)
+    check_docs(errors)
+    check_names(errors)
+    if RESERVED.search(MARKETPLACE):
+        errors.append("marketplace name is reserved or impersonating")
+    for skill, lines, tokens in long_skills():
+        print(f"WARN {skill}: SKILL.md is {lines} lines (about {tokens} tokens); aim for {SOFT_LINES} lines and {SOFT_TOKENS} tokens, move detail to references/")
+    for skill in flat_skills():
+        print(f"WARN {skill}: prose-only skill (no references/, scripts/ or assets/); add them so the flow is templated")
+    for skill, n in outside_links():
+        print(f"WARN {skill}: {n} relative path(s) outside the skill; they will not resolve once the plugin is installed alone")
+    for e in errors:
+        print("ERROR", e)
+    if errors:
+        return 1
+    rc = cmd_gen(check=True)
+    if rc == 0:
+        print(f"ok: {len(names)} plugins validated")
+    return rc
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if a[:1] == ["validate"]:
+        sys.exit(cmd_validate())
+    if a[:1] == ["new-plugin"]:
+        import argparse
+        ap = argparse.ArgumentParser(prog="pmcro.py new-plugin")
+        ap.add_argument("name"); ap.add_argument("--description", required=True)
+        ap.add_argument("--skill"); ap.add_argument("--skill-description")
+        n = ap.parse_args(a[1:])
+        skill = n.skill or n.name.removeprefix("pmcro-")
+        sys.exit(cmd_new_plugin(n.name, n.description, skill, n.skill_description or n.description))
+    if a[:1] == ["gen"]:
+        sys.exit(cmd_gen("--check" in a))
+    sys.exit(__doc__)

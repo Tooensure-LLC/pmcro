@@ -1,0 +1,7 @@
+namespace {{Namespace}}.Domain;
+
+/// <summary>Every model inherits this, so every model gets a random Id the moment it is created.</summary>
+public abstract class BaseEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+}
